@@ -2,4 +2,12 @@
 name = "mystake-collector"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "websocket-client>=1.9.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
