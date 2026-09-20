@@ -1,3 +1,4 @@
+from collections import deque
 import logging
 import random
 import ssl
@@ -18,10 +19,12 @@ from mystake.sources.mqtt.protocol import (
     build_connect_packet,
     build_pingreq_packet,
     build_subscribe_packet,
+    build_unsubscribe_packet,
     create_client_id,
     is_pingresp,
     is_successful_connack,
     is_successful_suback,
+    is_successful_unsuback,
     parse_publish_packet,
 )
 
@@ -47,6 +50,8 @@ class MystakeMqttClient:
         self._last_pingreq_at: float | None = None
 
         self._subscriptions: dict[str, int] = {}
+
+        self._pending_packets: deque[bytes] = deque()
 
     def receive_publish(
         self,
@@ -213,7 +218,25 @@ class MystakeMqttClient:
 
         return packet_id
 
+    def unsubscribe(
+        self,
+        topic: str,
+    ) -> int:
+        packet_id = self._unsubscribe_once(
+            topic=topic,
+        )
+
+        self._subscriptions.pop(
+            topic,
+            None,
+        )
+
+        return packet_id
+
     def receive_raw(self) -> bytes:
+        if self._pending_packets:
+            return self._pending_packets.popleft()
+
         ws = self._require_connection()
 
         while True:
@@ -265,6 +288,7 @@ class MystakeMqttClient:
 
     def close(self) -> None:
         if self.websocket is None:
+            self._pending_packets.clear()
             return
 
         try:
@@ -274,6 +298,7 @@ class MystakeMqttClient:
             self.websocket = None
             self._awaiting_pingresp = False
             self._last_pingreq_at = None
+            self._pending_packets.clear()
 
         logger.info(
             "WebSocket closed"
@@ -345,6 +370,103 @@ class MystakeMqttClient:
 
         logger.info(
             "MQTT subscription accepted "
+            "topic=%s packet_id=%s",
+            topic,
+            packet_id,
+        )
+
+        return packet_id
+
+    def _unsubscribe_once(
+        self,
+        topic: str,
+    ) -> int:
+        ws = self._require_connection()
+
+        packet_id = self._allocate_packet_id()
+
+        packet = build_unsubscribe_packet(
+            topic=topic,
+            packet_id=packet_id,
+        )
+
+        logger.info(
+            "Unsubscribing topic=%s "
+            "packet_id=%s",
+            topic,
+            packet_id,
+        )
+
+        try:
+            ws.send_binary(
+                packet
+            )
+
+            while True:
+                response = ws.recv()
+
+                if response == "":
+                    raise ConnectionError(
+                        "MQTT WebSocket closed "
+                        "while waiting for UNSUBACK"
+                    )
+
+                if isinstance(response, str):
+                    raise RuntimeError(
+                        "Expected binary MQTT message "
+                        "while waiting for UNSUBACK, "
+                        f"received text: {response}"
+                    )
+
+                if is_pingresp(response):
+                    self._awaiting_pingresp = False
+                    self._last_pingreq_at = None
+
+                    logger.info(
+                        "MQTT PINGRESP received "
+                        "while waiting for UNSUBACK"
+                    )
+                    continue
+
+                if is_successful_unsuback(
+                    response,
+                    expected_packet_id=packet_id,
+                ):
+                    break
+
+                packet_type = response[0] >> 4
+
+                if packet_type == 3:
+                    self._pending_packets.append(
+                        response
+                    )
+
+                    logger.debug(
+                        "Queued MQTT PUBLISH "
+                        "while waiting for UNSUBACK"
+                    )
+                    continue
+
+                raise RuntimeError(
+                    "Unexpected MQTT packet "
+                    "while waiting for UNSUBACK: "
+                    f"{response.hex(' ')}"
+                )
+
+        except websocket.WebSocketConnectionClosedException as exc:
+            raise ConnectionError(
+                "MQTT WebSocket closed "
+                "during UNSUBSCRIBE"
+            ) from exc
+
+        except OSError as exc:
+            raise ConnectionError(
+                "MQTT WebSocket network error "
+                "during UNSUBSCRIBE"
+            ) from exc
+
+        logger.info(
+            "MQTT unsubscribe accepted "
             "topic=%s packet_id=%s",
             topic,
             packet_id,

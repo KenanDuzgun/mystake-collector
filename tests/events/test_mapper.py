@@ -456,3 +456,128 @@ def test_no_diff_produces_no_events():
     )
 
     assert events == ()
+
+def test_maps_match_ended():
+    previous = {
+        "Match": {
+            "GameID": 100,
+            "Status": 1,
+            "BetStatus": 1,
+            "EventStatus": 4,
+            "LiveBetStatus": True,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "GameID": 100,
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+            "LiveBetStatus": False,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    events = map_live_diff_to_events(
+        diff,
+        current,
+    )
+
+    event_types = {
+        event.event_type
+        for event in events
+    }
+
+    assert LiveEventType.MATCH_ENDED in event_types
+    assert LiveEventType.BET_STATUS_CHANGED in event_types
+
+    match_ended_event = next(
+        event
+        for event in events
+        if event.event_type
+        == LiveEventType.MATCH_ENDED
+    )
+
+    assert match_ended_event.game_id == 100
+
+    assert match_ended_event.payload["status"] == {
+        "old": 1,
+        "new": 3,
+    }
+
+    assert match_ended_event.payload["bet_status"] == {
+        "old": 1,
+        "new": 0,
+    }
+
+    assert match_ended_event.payload["event_status"] == {
+        "old": 4,
+        "new": 40,
+    }
+
+    assert match_ended_event.payload[
+        "live_bet_status"
+    ] == {
+        "old": True,
+        "new": False,
+    }
+
+
+def test_live_bet_status_false_alone_does_not_end_match():
+    previous = {
+        "Match": {
+            "GameID": 100,
+            "Status": 1,
+            "BetStatus": 1,
+            "EventStatus": 4,
+            "LiveBetStatus": True,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "GameID": 100,
+            "Status": 1,
+            "BetStatus": 1,
+            "EventStatus": 4,
+            "LiveBetStatus": False,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    events = map_live_diff_to_events(
+        diff,
+        current,
+    )
+
+    event_types = {
+        event.event_type
+        for event in events
+    }
+
+    assert (
+        LiveEventType.MATCH_ENDED
+        not in event_types
+    )
+
+    assert (
+        LiveEventType.BET_STATUS_CHANGED
+        in event_types
+    )

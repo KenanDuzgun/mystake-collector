@@ -1,6 +1,12 @@
 import logging
 from typing import Any
 
+from mystake.events.mapper import (
+    map_live_diff_to_events,
+)
+from mystake.events.models import (
+    LiveEventType,
+)
 from mystake.pipeline.live_snapshot_diff import (
     LiveSnapshotDiff,
     diff_live_snapshots,
@@ -11,11 +17,8 @@ from mystake.pipeline.notification_processor import (
 from mystake.sources.cache.client import MystakeCacheClient
 from mystake.sources.mqtt.client import MystakeMqttClient
 
-from mystake.events.mapper import (
-    map_live_diff_to_events,
-)
 
-TOPIC = "live/gamenew/76321927"
+TOPIC = "live/gamenew/75297868"
 
 
 def print_snapshot(
@@ -227,6 +230,8 @@ def main() -> None:
                 result.data
             )
 
+            match_ended = False
+
             if previous_snapshot is None:
                 print()
                 print(
@@ -262,7 +267,34 @@ def main() -> None:
                         for key, value in event.payload.items():
                             print(f"{key:<12}: {value}")
 
+                        if (
+                            event.event_type
+                            == LiveEventType.MATCH_ENDED
+                        ):
+                            match_ended = True
+
             previous_snapshot = result.data
+
+            if match_ended:
+                logging.info(
+                    "MATCH_ENDED detected. "
+                    "Unsubscribing topic=%s",
+                    TOPIC,
+                )
+
+                mqtt_client.unsubscribe(
+                    TOPIC
+                )
+
+                previous_snapshot = None
+
+                logging.info(
+                    "Live match lifecycle cleanup completed "
+                    "topic=%s",
+                    TOPIC,
+                )
+
+                break
 
     except KeyboardInterrupt:
         print()
