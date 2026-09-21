@@ -1,15 +1,10 @@
-# MyStake Collector — Complete Handoff / Continuation Context
+# MyStake Collector — Complete Continuation Context
 
-Bu doküman `mystake-collector` projesine yeni bir ChatGPT session’ında kaldığımız yerden eksiksiz devam edebilmek için hazırlanmıştır.
+Bu doküman `mystake-collector` projesine yeni bir ChatGPT session’ında kaldığımız yerden eksiksiz devam etmek için hazırlanmıştır.
 
-Amaç:
-- Şimdiye kadar yaptığımız reverse-engineering çalışmalarını kaybetmemek.
-- Kanıtlanmış ve henüz kanıtlanmamış protocol davranışlarını birbirinden ayırmak.
-- Mevcut çalışan kodu bozmamak.
-- Aynı deneyleri gereksiz yere tekrar etmemek.
-- Bir sonraki hedefe doğrudan devam etmek.
+## Çalışma prensibi
 
-Ana çalışma prensibi:
+Ana yaklaşım:
 
 ```text
 observe
@@ -18,18 +13,33 @@ observe
 → only then productionize
 ```
 
-Tahminle protocol semantics uydurma.
+Protocol semantics tahmin edilmemeli.
 
-Gereksiz refactor yapma.
+Kanıtlanmış davranış ile hipotez birbirinden ayrılmalı.
+
+Şimdilik production refactor, database, Redis, Kafka/RabbitMQ veya Java rewrite yapılmayacak.
+
+Öncelik:
+
+```text
+protocol correctness
+```
 
 Kullanıcı:
-- macOS kullanıyor.
-- PyCharm kullanıyor.
-- Terminalde `uv` kullanıyor.
-- Chrome DevTools ile network/socket reverse engineering yapıyor.
-- Adım adım ilerlemek istiyor.
-- Kod değişikliklerinde exact filename / complete file / exact command tercih ediyor.
-- Terminal çıktısını gönderiyor, sonra sonraki adıma geçiliyor.
+
+```text
+macOS
+PyCharm
+Python 3.13
+uv
+Chrome DevTools
+```
+
+Adım adım ilerlemek istiyor.
+
+Bir kerede tek deney/görev ver.
+
+Terminal/DevTools çıktısını kullanıcı gönderiyor, sonra sonraki adıma geçiliyor.
 
 ---
 
@@ -41,9 +51,7 @@ Project:
 mystake-collector
 ```
 
-Ana hedef:
-
-MyStake’tan browser bağımsız şekilde şu verileri toplamak:
+Amaç MyStake’tan browser bağımsız şekilde tüm lifecycle verisini toplamak:
 
 ```text
 fixture discovery
@@ -51,173 +59,124 @@ prematch state
 prematch markets
 prematch selections
 prematch odds
+
+kickoff
+
 live state
 live markets
 live odds
 live score
-match lifecycle
+
 match end
+final state
 cleanup
 ```
 
-Sadece live maçlar takip edilmeyecek.
+Sadece canlı maçlar takip edilmeyecek.
 
-Hedef full lifecycle:
+Full lifecycle hedefi:
 
 ```text
 fixture appears
 → PREMATCH
-→ prematch markets / selections / odds updates
+→ prematch updates
 → kickoff
 → LIVE
-→ live score / markets / odds / state
+→ live updates
 → MATCH_ENDED
-→ final state
 → cleanup
 ```
 
 ---
 
-# 2. DEVELOPMENT ENVIRONMENT
-
-Environment:
-
-```text
-macOS
-PyCharm
-Python 3.13
-uv
-```
+# 2. DEVELOPMENT / BASELINE
 
 Project root:
 
-```text
-mystake-collector/
+```bash
+cd ~/Desktop/Projects/mystake-collector
 ```
 
-Temel komutlar:
+Test:
 
 ```bash
 uv run pytest
 ```
 
-```bash
-uv run python main.py
-```
-
-```bash
-uv run python inspect_prematch_games.py
-```
-
-```bash
-uv run python -m py_compile inspect_prematch_games.py
-```
-
-Regression baseline:
+Mevcut regression baseline:
 
 ```text
 47 passed
 ```
 
-Bu baseline korunmalı.
+Ana prematch inspection:
+
+```bash
+uv run python inspect_prematch_games.py
+```
+
+Main:
+
+```bash
+uv run python main.py
+```
+
+Baseline bozulmamalı.
 
 ---
 
-# 3. CURRENT PROJECT STRUCTURE
+# 3. CURRENT STRUCTURE
 
-Mevcut structure:
+Kabaca:
 
 ```text
 mystake-collector/
-├── .venv/
-│
 ├── docs/
 │   ├── handoff/
-│   │   ├── baglam.md
-│   │   └── handoff.md
 │   └── product/
-│
 ├── mystake/
 │   ├── events/
-│   │   ├── __init__.py
 │   │   ├── mapper.py
 │   │   └── models.py
-│   │
 │   ├── pipeline/
-│   │   ├── __init__.py
 │   │   ├── cache_decoder.py
 │   │   ├── live_snapshot_diff.py
 │   │   └── notification_processor.py
-│   │
 │   ├── sources/
 │   │   ├── cache/
-│   │   │   ├── __init__.py
 │   │   │   └── client.py
-│   │   │
 │   │   └── mqtt/
-│   │       ├── __init__.py
 │   │       ├── client.py
 │   │       ├── message.py
 │   │       └── protocol.py
-│   │
-│   ├── __init__.py
 │   └── config.py
-│
 ├── tests/
-│
-├── .gitignore
-├── AGENTS.md
-├── CLAUDE.md
 ├── inspect_prematch_games.py
 ├── main.py
 ├── pyproject.toml
 └── uv.lock
 ```
 
----
-
-# 4. ARCHITECTURE RULE
-
-Katmanlar kabaca:
+Architecture rule:
 
 ```text
 sources/
-    transport / protocol
+→ transport/protocol
 
 pipeline/
-    decode / transform / diff
+→ decoding / transformation / diff
 
 events/
-    semantic events
-
-future:
-    lifecycle/
-    storage/
-    prematch state modules
+→ semantic events
 ```
 
-Önemli kural:
-
-`mystake/sources/mqtt/client.py`
-
-transport/protocol seviyesinde kalmalı.
-
-Şunları MQTT client içine koyma:
-
-```text
-domain diff
-fixture lifecycle
-database writes
-odds normalization
-semantic event generation
-business logic
-```
+MQTT client içine business logic koyma.
 
 ---
 
-# 5. MQTT CONNECTION — PROVEN
+# 4. MQTT — PROVEN
 
-WebSocket endpoint:
+WebSocket:
 
 ```text
 wss://wss-eu-uk1.ws-amazon.com/mqtt
@@ -234,7 +193,7 @@ username = none
 password = none
 ```
 
-Çalışan sequence:
+Sequence:
 
 ```text
 CONNECT
@@ -245,68 +204,9 @@ CONNECT
 → PINGREQ / PINGRESP
 ```
 
-Reconnect/resubscribe de gerçek broker üzerinde doğrulandı.
+Reconnect/resubscribe gerçek broker üzerinde çalıştı.
 
----
-
-# 6. MQTT RECONNECT — PROVEN
-
-Gerçek testte:
-
-```text
-connection lost
-→ reconnect
-→ CONNACK
-→ restore subscriptions
-→ continue receiving
-```
-
-çalıştı.
-
----
-
-# 7. MQTT UNSUBSCRIBE — PROVEN
-
-Gerçek broker üzerinde:
-
-```text
-UNSUBSCRIBE
-→ UNSUBACK
-```
-
-doğrulandı.
-
-Önemli implementation detayı:
-
-Broker bazen `UNSUBACK` gelmeden önce yeni `PUBLISH` gönderebiliyor.
-
-Possible sequence:
-
-```text
-PUBLISH
-PUBLISH
-UNSUBACK
-```
-
-Bu nedenle pending packet queue korunmalı.
-
----
-
-# 8. LIVE MQTT TOPIC — PROVEN
-
-Exact live topic:
-
-```text
-live/gamenew/{GameId}
-```
-
-Örnek:
-
-```text
-live/gamenew/74679515
-```
-
-Exact subscribe çalışıyor.
+UNSUBSCRIBE/UNSUBACK gerçek broker üzerinde doğrulandı.
 
 Wildcard:
 
@@ -314,23 +214,27 @@ Wildcard:
 live/gamenew/#
 ```
 
-test edildi ve broker:
+reddedildi:
 
 ```text
 SUBACK 0x80
 ```
 
-döndürdü.
+Exact live topic:
 
-Yani wildcard reddediliyor.
+```text
+live/gamenew/{GameId}
+```
+
+çalışıyor.
 
 ---
 
-# 9. MQTT CACHE MODEL — PROVEN
+# 5. MQTT CACHE MODEL — PROVEN
 
-MQTT `PUBLISH` çoğu zaman data’yı doğrudan taşımıyor.
+PUBLISH payload çoğu zaman doğrudan data taşımıyor.
 
-Payload:
+Örnek:
 
 ```text
 cache:https://...
@@ -347,62 +251,17 @@ MQTT PUBLISH
 → JSON decode
 ```
 
-Bu pipeline implement edildi.
+Bu implement edildi.
 
 ---
 
-# 10. NotificationProcessor DETAIL
+# 6. LIVE SIDE — PROVEN
 
-`NotificationProcessor.process(message)` doğrudan dict dönmüyor.
+Live snapshot alanları gözlendi.
 
-Return:
+Live diff çalışıyor.
 
-```text
-ProcessedNotification
-```
-
-Decoded payload:
-
-```python
-processed.data
-```
-
-üzerinden alınmalı.
-
----
-
-# 11. LIVE STATE — PROVEN
-
-Live snapshot içinde gözlenen alanlar:
-
-```text
-gmk
-TimeLines
-Match
-mk
-```
-
-Live snapshot diff implement edildi.
-
-Semantic live events üretilebiliyor.
-
----
-
-# 12. LIVE SEMANTICS
-
-Gözlenen:
-
-```text
-visible=false
-```
-
-tek başına bütün market suspended demek değil.
-
-```text
-LiveBetStatus=false
-```
-
-tek başına match ended demek değil.
+Semantic events üretilebiliyor.
 
 Football için güçlü match-end pattern:
 
@@ -412,33 +271,23 @@ BetStatus == 0
 EventStatus == 40
 ```
 
----
-
-# 13. REAL LIVE MATCH-END TEST
-
-Gerçek GameId:
-
-```text
-75297868
-```
-
-Maç yaklaşık 88. dakikadan bitişe kadar izlendi.
-
-Kanıtlanan lifecycle:
+Gerçek maçta:
 
 ```text
 subscribe
-→ live updates
+→ updates
 → match-end detection
 → final state
 → cleanup
 ```
 
+doğrulandı.
+
 ---
 
-# 14. PREMATCH GLOBAL MQTT TOPICS — PROVEN
+# 7. PREMATCH MQTT TOPICS — PROVEN
 
-Chrome DevTools ve Python reverse engineering sonucu şu üç topic doğrulandı:
+Global topics:
 
 ```text
 prematch/header
@@ -446,180 +295,105 @@ prematch/games
 prematch/markets
 ```
 
-Hepsi için:
-- SUBSCRIBE görüldü.
-- Server → client PUBLISH görüldü.
+Üçü de gerçek MQTT SUBSCRIBE/PUBLISH ile doğrulandı.
+
+GameId-specific prematch MQTT topic henüz bulunmadı.
 
 ---
 
-# 15. MQTT SUBSCRIBE FRAMES — PROVEN
+# 8. PREMATCH/GAMES — PROVEN
 
-`prematch/header`:
-
-```text
-82 14 00 02 00 0F ... prematch/header ... 00
-```
-
-`prematch/games`:
-
-```text
-82 13 00 04 00 0E ... prematch/games ... 00
-```
-
-`prematch/markets`:
-
-```text
-82 15 00 06 00 10 ... prematch/markets ... 00
-```
-
-Decode:
-
-```text
-82 = MQTT SUBSCRIBE
-00 xx = packet id
-00 xx = topic length
-topic string
-00 = requested QoS 0
-```
-
----
-
-# 16. PREMATCH PUBLISH FRAMES — PROVEN
-
-`prematch/games` PUBLISH örneği:
-
-```text
-30 ...
-00 0E
-prematch/games
-cache:https://...
-```
-
-`prematch/header` PUBLISH örneği:
-
-```text
-prematch/header
-cache:https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/header
-```
-
-`prematch/markets` PUBLISH örneği:
-
-```text
-prematch/markets
-cache:https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/markets
-```
-
----
-
-# 17. PREMATCH/GAMES CACHE
-
-Cache endpoint:
+Cache:
 
 ```text
 https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/games
 ```
 
-Decoded payload:
+Payload:
 
 ```json
 {
   "UpdateList": [
     {
       "GameId": 12345678,
-      "UpdateTimeStamp": 1789936601183
+      "UpdateTimeStamp": 1790013300
     }
   ],
   "DeleteList": []
 }
 ```
 
-`UpdateList` full fixture universe değildir.
+Bu full fixture universe değil.
 
 Daha çok:
 
 ```text
-change / update notification stream
+change / update / invalidation stream
 ```
 
-gibi davranır.
+gibi davranıyor.
 
-Aynı notification tekrar gelebilir.
+Exact duplicate notification’lar geliyor.
 
-Exact duplicate suppression implement edildi.
+Duplicate suppression implement edildi.
 
----
+`DeleteList` çoğunlukla boş gözlendi.
 
-# 18. PREMATCH/GAMES DUPLICATES
+Semantiği henüz kanıtlanmadı.
 
-Exact duplicate messages sık geliyor.
+Geldiğinde doğrudan delete etme.
 
-Collector bunları skip ediyor.
-
-Bu behavior korunmalı.
+Önce logla ve kanıtla.
 
 ---
 
-# 19. UpdateTimeStamp
+# 9. UpdateTimeStamp
 
-`UpdateTimeStamp` bazen:
+Daha önce gözlendi:
 
 ```text
-13 digit
+13-digit
 ```
 
-bazen:
+ve:
 
 ```text
-10 digit
+10-digit
 ```
 
-olarak görüldü.
+olabiliyor.
 
-Exact semantics kesin değil.
+Önceden semantiği belirsizdi.
 
-Monotonic version kabul etme.
+Bu son HAR testi ile artık `gamefull.game.up` ile çok güçlü ilişki bulundu.
+
+Detay aşağıda.
 
 ---
 
-# 20. PREMATCH/MARKETS — IMPORTANT DISCOVERY
+# 10. PREMATCH/MARKETS
 
-MQTT topic:
+Topic:
 
 ```text
 prematch/markets
 ```
 
-publish edildiğinde payload:
+Cache response actual market data değil.
 
-```text
-cache:https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/markets
-```
-
-Cache endpoint:
-
-```text
-https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/markets
-```
-
-örnek response:
+Örnek:
 
 ```text
 "MTc4OTk3ODUwMw=="
 ```
 
-Base64 decode:
+base64 decode:
 
 ```text
 1789978503
 ```
 
-Daha sonra:
-
-```text
-"MTc4OTk3OTEwMw=="
-```
-
-decode:
+Sonraki:
 
 ```text
 1789979103
@@ -631,47 +405,24 @@ Fark:
 600 seconds
 ```
 
-yani tam:
+Yani tam 10 dakika.
 
-```text
-10 minutes
-```
-
-Güçlü hipotez:
+Strong hypothesis:
 
 ```text
 prematch/markets
-→ actual market data değil
-→ timestamp / version / invalidation marker gibi davranıyor
+→ timestamp/version/invalidation marker
 ```
 
-Bu henüz formal semantic olarak kesin isimlendirilmemeli.
+Actual odds payload olmadığı açık.
 
-Ama actual odds payload olmadığı açık.
+Exact semantik adı henüz kesin verilmemeli.
 
 ---
 
-# 21. PREMATCH/HEADER
+# 11. PREMATCH ENDPOINTS
 
-Topic:
-
-```text
-prematch/header
-```
-
-Cache endpoint:
-
-```text
-https://wss-eu-uk1.ws-amazon.com/api/cache/get?key=prematch/header
-```
-
-Exact content/semantic henüz derin analiz edilmedi.
-
----
-
-# 22. GETPREMATCHGAMEFULL — PROVEN
-
-Endpoint:
+Full:
 
 ```text
 https://analytics-sp.googleserv.tech/api/prematch/getprematchgamefull/28/{GameId}
@@ -683,21 +434,21 @@ Pattern:
 /api/prematch/getprematchgamefull/{CONTEXT_ID}/{GAME_ID}
 ```
 
-Şimdilik:
+Current:
 
 ```python
 PREMATCH_CONTEXT_ID = 28
 ```
 
-`28` sport id değildir.
+`28` sport ID değil.
 
 Exact anlamı bilinmiyor.
 
 ---
 
-# 23. GAMEFULL RESPONSE FORMAT
+# 12. GAMEFULL — PROVEN AUTHORITATIVE
 
-Outer:
+Response outer:
 
 ```json
 {
@@ -714,160 +465,31 @@ outer = response.json()
 game = json.loads(outer["game"])
 ```
 
-`gamefull` authoritative full snapshot gibi davranıyor.
+`gamefull` authoritative full snapshot gibi davranıyor ve gerçek testlerle doğrulandı.
 
 ---
 
-# 24. PREMATCH GAME STRUCTURE
-
-Observed fields:
-
-```text
-id
-ch
-t1
-t2
-sti
-st
-s
-vis
-istop
-istopbaner
-pc
-mc
-sport
-region
-stunix
-up
-bid
-gmrc
-hasstream
-ev
-```
-
-Kısa field’lara kanıtsız semantic isim verme.
-
----
-
-# 25. PREMATCH MARKET STRUCTURE
-
-`game.ev`:
-
-```text
-marketId
-  selectionId
-    pos
-    coef
-    res
-    lock
-    h
-    hism
-    p1
-    pl
-```
-
----
-
-# 26. GETPREMATCHGAMEALL — PROVEN
+# 13. GAMEALL
 
 Endpoint:
 
 ```text
-https://analytics-sp.googleserv.tech/api/prematch/getprematchgameall/fr/28/?games=,75433979
+/api/prematch/getprematchgameall/{LANGUAGE}/28/?games=,{GAME_IDS}
 ```
 
-Browser ayrıca `en` language variant kullanıyor:
-
-```text
-https://analytics-sp.googleserv.tech/api/prematch/getprematchgameall/en/28/?games=,...
-```
-
-Pattern:
-
-```text
-/api/prematch/getprematchgameall/{LANGUAGE}/{CONTEXT_ID}/?games=,{GAME_IDS}
-```
-
-Nested JSON strings içeriyor.
-
-Top-level:
-
-```text
-game
-outrights
-companyPrice
-teams
-```
-
----
-
-# 27. GAMEALL BATCH SUPPORT — PROVEN
-
-Multiple GameIds tek request içinde çalışıyor:
+Batch support var:
 
 ```text
 ?games=,75433979,75747467
 ```
 
----
-
-# 28. TEAM ID → NAME
-
-Mapping:
-
-```text
-game.t1 / game.t2
-→ teams[].ID
-→ teams[].Name
-```
-
-çalışıyor.
+Top-level nested JSON strings içeriyor.
 
 ---
 
-# 29. MULTI-SPORT PREMATCH STREAM
+# 14. GAMEALL VS GAMEFULL — PROVEN
 
-`prematch/games` multiple sports taşıyor.
-
-Observed IDs:
-
-```text
-1
-2
-3
-5
-15
-22
-26
-63
-66
-73
-101
-...
-```
-
-Bazıları observation ile biliniyor:
-
-```text
-1 → football-looking
-3 → baseball example
-5 → tennis examples
-```
-
-Bilinmeyenleri tahmin etme.
-
----
-
-# 30. GAMEALL VS GAMEFULL — CRITICAL PROOF
-
-Fixture:
-
-```text
-75747467
-Flamengo RJ vs Red Bull Bragantino SP
-```
-
-Observed:
+Gerçek fixture karşılaştırması:
 
 ```text
 gameall:
@@ -895,19 +517,15 @@ gameall selections ⊂ gamefull selections
 Conclusion:
 
 ```text
-getprematchgameall = PARTIAL payload
-getprematchgamefull = FULL authoritative snapshot
+gameall = PARTIAL payload
+gamefull = FULL authoritative snapshot
 ```
 
 ---
 
-# 31. ORIGINAL MERGE MODEL
+# 15. GAMEALL COMPLETE LOGICAL DELTA DEĞİL — PROVEN
 
-İlk merge selection-by-selection upsert idi.
-
-Bu gerçek trafikte yetersiz çıktı.
-
-Daha iyi model:
+İlk merge yaklaşımı:
 
 ```text
 market absent from delta
@@ -917,280 +535,7 @@ market present in delta
 → replace entire local market
 ```
 
-Implementation:
-
-```python
-for market_id, delta_selections in delta["ev"].items():
-    merged["ev"][market_id] = deepcopy(delta_selections)
-```
-
----
-
-# 32. TOP-LEVEL SCALAR MERGE
-
-Delta içinde gelen scalar fields local state üzerine overwrite ediliyor.
-
-`ev` separately market-level işleniyor.
-
----
-
-# 33. pc CHECK
-
-`pc` ile total selection count arasında güçlü relation var.
-
-Örnek:
-
-```text
-gamefull pc = 6793
-count(full ev selections) = 6793
-```
-
-Bu nedenle merge sonrası:
-
-```text
-local selection count != pc
-→ suspect state
-→ gamefull resync
-```
-
-mantığı eklendi.
-
----
-
-# 34. COUNT-MISMATCH RESYNC — PROVEN
-
-Örnek:
-
-```text
-local=402
-server_pc=407
-```
-
-gamefull sonrası:
-
-```text
-407
-```
-
-geldi.
-
-Bu safety mechanism işe yarıyor.
-
----
-
-# 35. REAL PREMATCH ODDS CHANGES — PROVEN
-
-Gerçek traffic:
-
-```text
-coef: 1.82 -> 1.90
-coef: 1.92 -> 1.84
-```
-
-başka:
-
-```text
-2.17 -> 2.12
-1.59 -> 1.62
-```
-
-Collector gerçek odds değişimini yakalıyor.
-
----
-
-# 36. REAL SELECTION ADDITIONS — PROVEN
-
-Örnek:
-
-```text
-pc: 16 -> 18
-```
-
-market:
-
-```text
-2117
-```
-
-added:
-
-```text
-11606876691
-11606876692
-```
-
----
-
-# 37. DELETE LIST
-
-Bugüne kadar çoğunlukla:
-
-```text
-DeleteList = []
-```
-
-Exact semantics unknown.
-
-Gelirse doğrudan delete etme.
-
-Önce logla ve kanıtla.
-
----
-
-# 38. LOCK CHANGES
-
-Soak testlerde:
-
-```text
-Lock changes = 0
-```
-
-Bu sadece observation.
-
-Never changes anlamına gelmez.
-
----
-
-# 39. FIRST 5-MINUTE SOAK RESULT
-
-```text
-Notifications            : 185
-Duplicate notifications  : 81
-Delta batches            : 102
-Delta games              : 447
-Full bootstraps          : 189
-Delta merges             : 258
-Count matches            : 249
-Count mismatches         : 9
-Full resyncs             : 9
-Logical changes          : 108
-No-op updates             : 150
-Price changes            : 475
-Lock changes             : 0
-Added markets            : 0
-Removed markets          : 108
-Added selections         : 16
-Removed selections       : 54
-Direct merge count-match : 96.51%
-```
-
----
-
-# 40. SAMPLED FULL VALIDATION
-
-Question:
-
-```text
-count match == exact state ?
-```
-
-Bunu test etmek için sampled gamefull validation eklendi.
-
-İlk sample exact match çıktı.
-
-Daha sonra critical mismatch’ler geldi.
-
----
-
-# 41. SAME-COUNT HIDDEN DIVERGENCE — PROVEN
-
-Example:
-
-```text
-GameId=76295715
-Madla vs Haugesund 2
-```
-
-Observed:
-
-```text
-merged up == full up
-local pc == full pc
-local markets == full markets
-local selections == full selections
-```
-
-ama:
-
-```text
-local coef != full coef
-```
-
-birçok selection için görüldü.
-
----
-
-# 42. SECOND SAME-COUNT MISMATCH
-
-Example:
-
-```text
-GameId=76436060
-Sychra, Martin vs Kasnik, Sebastian
-```
-
-Counts same.
-
-`up` same.
-
-Ama odds farklı.
-
----
-
-# 43. STABLE MISMATCH VALIDATION
-
-Validator enhanced:
-
-```text
-local != full1
-fetch full2 immediately
-compare full1 vs full2
-```
-
-Classification:
-
-```text
-FULL1 == FULL2
-LOCAL != FULL
-→ STABLE_MISMATCH
-```
-
----
-
-# 44. DECISIVE STABLE_MISMATCH
-
-Example:
-
-```text
-GameId=76447616
-Aurora Zantedeschi vs Lombardini, Marta
-```
-
-Observed:
-
-```text
-merged up == full1 up == full2 up
-local != full2
-full1 == full2
-```
-
-Conclusion:
-
-```text
-not a race
-```
-
-Mismatch markets all:
-
-```text
-present_in_current_delta=False
-```
-
-Ama authoritative full’da odds değişmişti.
-
----
-
-# 45. CRITICAL PREMATCH RULE
+Ama soak testlerde authoritative divergence bulundu.
 
 Proven:
 
@@ -1206,64 +551,68 @@ market missing from gameall
 ≠ unchanged
 ```
 
-Bu çok önemli.
+Ayrıca selection identity count değişmeden değişebiliyor.
 
----
-
-# 46. SELECTION IDENTITY CAN CHANGE WITHOUT COUNT CHANGE
-
-Example market:
+Örneğin aynı market için:
 
 ```text
-580
+local IDs != full IDs
 ```
 
-Local IDs:
-
-```text
-11609165868
-11609165869
-```
-
-Full IDs:
-
-```text
-11609158205
-11609158206
-```
-
-Count aynı ama IDs farklı.
+ama count aynı.
 
 Conclusion:
-
-```text
-gameall is NOT a complete logical delta
-```
-
----
-
-# 47. CURRENT GAMEALL MODEL
-
-Best evidence-based model:
 
 ```text
 gameall
 =
 partial view / partial update
-```
 
-Ama:
-
-```text
-NOT authoritative full snapshot
+NOT authoritative snapshot
 NOT complete logical delta
 ```
 
 ---
 
-# 48. PERIODIC AUTHORITATIVE RECONCILIATION
+# 16. PC CHECK — YARARLI AMA YETERSİZ
 
-Experimental threshold:
+Observed:
+
+```text
+gamefull.pc == total selection count
+```
+
+güçlü ilişki gösteriyor.
+
+Bu yüzden:
+
+```text
+local selection count != pc
+→ gamefull resync
+```
+
+eklendi.
+
+Gerçek count mismatch resync çalıştı.
+
+Ancak:
+
+```text
+pc match
+≠ exact state correctness
+```
+
+PROVEN.
+
+Same-count stable divergence bulundu.
+
+Özellikle local/full count aynıyken odds farklı çıktı.
+
+---
+
+# 17. PERIODIC RECONCILIATION
+
+Experimental:
 
 ```python
 RECONCILE_EVERY_GAME_MERGES = 10
@@ -1278,740 +627,906 @@ first seen
 known game
 → gameall merge
 
-every 10 same-GameId merges
+every N merges
 → gamefull reconciliation
 ```
 
-If difference stable:
+Reconciliation gerçek authoritative divergence’ları repair etti.
+
+10 dakikalık soak:
 
 ```text
-replace local with authoritative full
+Reconciliation checks  : 11
+matches                : 1
+repairs                : 10
 ```
+
+Yaklaşık:
+
+```text
+90.9% repair rate
+```
+
+Bu bize gameall merge modelinin exact state tutmadığını güçlü şekilde gösterdi.
 
 ---
 
-# 49. REAL RECONCILIATION REPAIR — PROVEN
+# 18. ÖNEMLİ MİMARİ SONUÇ
 
-Game:
-
-```text
-76448598
-Fernandez, Bruno vs Farjat, Tomas
-```
-
-Observed stable authoritative difference.
-
-Repair:
-
-```text
-local state replaced with newest gamefull
-```
-
----
-
-# 50. LATEST 10-MINUTE SOAK RESULT
-
-Critical checkpoint:
-
-```text
-Notifications            : 522
-Duplicate notifications  : 174
-Delta batches            : 335
-Delta games              : 1333
-Full bootstraps          : 350
-Delta merges             : 983
-Count matches            : 950
-Count mismatches         : 33
-Full resyncs             : 33
-Reconciliation checks    : 11
-Reconciliation matches   : 1
-Reconciliation repairs   : 10
-Reconciliation races     : 0
-Sampled validations      : 0
-Sampled exact matches    : 0
-Sampled mismatches       : 0
-Sampled races            : 0
-Stable mismatches        : 0
-Hidden same-up races     : 0
-Unclassified mismatches  : 0
-Logical changes          : 485
-No-op updates             : 498
-Price changes            : 2966
-Lock changes             : 0
-Added markets            : 261
-Removed markets          : 109
-Added selections         : 145
-Removed selections       : 148
-
-Direct merge count-match : 96.64%
-```
-
-Reconciliation:
-
-```text
-checks = 11
-matches = 1
-repairs = 10
-```
-
-Repair rate:
-
-```text
-~90.9%
-```
-
-Conclusion:
-
-```text
-pc match
-≠ exact state correctness
-```
-
----
-
-# 51. IMPORTANT ARCHITECTURE CONCLUSION
-
-Do NOT simply solve this by lowering:
+Problemi:
 
 ```text
 RECONCILE_EVERY_GAME_MERGES
 10 → 5 → 1
 ```
 
-That would become brute-force full snapshot polling.
+yaparak brute force çözme.
 
-`gamefull` can be hundreds of KB.
+Bu `gamefull` polling’e dönüşür.
 
-Need protocol correctness first.
+Önce browser gerçek davranışı çözülmeliydi.
 
----
-
-# 52. BROWSER REVERSE ENGINEERING — RECENT DISCOVERY
-
-We moved to Chrome DevTools to find how MyStake frontend updates prematch state.
-
-Confirmed global prematch topics:
-
-```text
-prematch/header
-prematch/games
-prematch/markets
-```
-
-No GameId-specific prematch MQTT topic has been proven so far.
+Bu nedenle Chrome HAR reverse engineering’e geçildi.
 
 ---
 
-# 53. PREMATCH/MARKETS DOES NOT APPEAR TO BE ACTUAL ODDS PAYLOAD
+# 19. CLEAN PREMATCH TEST
 
-Its cache result is a base64 timestamp-like value.
-
-Observed exact +600 second movement.
-
-So strongest current interpretation:
+Test GameId:
 
 ```text
-prematch/markets
-→ 10-minute marker / version / invalidation signal
+76433701
 ```
-
-Do NOT call it exact semantic until more evidence.
-
----
-
-# 54. FETCH/XHR OBSERVATIONS
-
-Browser uses:
-
-```text
-getprematchgameall
-getprematchgamefull
-```
-
-Endpoints.
-
-Examples seen:
-
-```text
-https://analytics-sp.googleserv.tech/api/prematch/getprematchgameall/en/28/?games=,76446999
-```
-
-```text
-https://analytics-sp.googleserv.tech/api/prematch/getprematchgamefull/28/76446999
-```
-
-Initiator often:
-
-```text
-helpers.js?v=2.3.7:1
-```
-
----
-
-# 55. IMPORTANT BROWSER TEST PROBLEM
-
-Several test matches were only 4–5 minutes from kickoff.
-
-This caused observations to become mixed with:
-
-```text
-prematch → kickoff → live transition
-```
-
-So some `gamefull` calls seen after kickoff cannot safely be interpreted as normal prematch update behavior.
-
-Need a cleaner test window next time.
-
----
-
-# 56. TEST CASE — GameId 76447253
 
 URL:
 
 ```text
-https://mystake.com/en/sportsbook/prematch/match/76447253
+https://mystake.com/en/sportsbook/prematch/match/76433701
 ```
 
-Browser had this match open.
-
-Collector output:
+Test başlangıcı:
 
 ```text
-GameId=76447253 timestamp=1789980302158 known=False
-2026-09-21 11:45:02,815 INFO root - Fetching prematch DELTA batch games=1
-2026-09-21 11:45:03,094 INFO httpx - HTTP Request: GET https://analytics-sp.googleserv.tech/api/prematch/getprematchgameall/fr/28/?games=,76447253 "HTTP/1.1 200 OK"
+local time ≈ 20:40
+kickoff = 21:00
 ```
 
-Delta:
+Yani yaklaşık 20 dakika temiz prematch observation window vardı.
+
+Chrome DevTools:
 
 ```text
-delta markets    : 0
-delta selections : 0
-delta up         : 1789980302
-delta mc         : 0
-delta pc         : 0
+Network
+Preserve log / Keep log ON
 ```
 
-Collector then did:
+İlk filtre:
 
-```text
-STATE ACTION: FIRST SEEN -> FULL BOOTSTRAP
+```regex
+(getprematchgameall|getprematchgamefull).*76433701
 ```
 
-and:
-
-```text
-2026-09-21 11:45:03,372 INFO httpx - HTTP Request: GET https://analytics-sp.googleserv.tech/api/prematch/getprematchgamefull/28/76447253
-```
-
-Game:
-
-```text
-Feyenoord Rotterdam (Snake)
-vs
-Galatasaray (Scorpion)
-```
-
-Fields:
-
-```text
-Start           : 2026-09-21T08:45:00
-Sport           : 1
-Region          : 1205
-Champ/Ch        : 76163
-Local markets   : 0
-Local selections: 0
-Server mc       : 0
-Server pc       : 0
-Updated         : 1789980302
-Visible         : False
-Has stream      : False
-```
-
-Important timezone interpretation:
-
-```text
-Start = 08:45 UTC
-local terminal time = 11:45 +03
-```
-
-So match scheduled kickoff was exactly:
-
-```text
-11:45 local
-```
-
-UpdateList arrived around:
-
-```text
-11:45:02
-```
-
-Therefore this event was almost certainly kickoff/lifecycle-related, not a clean pre-kickoff odds update.
-
----
-
-# 57. IMPORTANT LIFECYCLE CLUE FROM 76447253
-
-At kickoff:
-
-```text
-prematch/games
-→ GameId=76447253
-```
-
-then gameall returned:
-
-```text
-markets = 0
-selections = 0
-mc = 0
-pc = 0
-```
-
-gamefull also showed:
-
-```text
-markets = 0
-selections = 0
-visible = false
-```
-
-This is potentially very important for future prematch → live transition logic.
-
-Do not lose this observation.
-
-Potential lifecycle model to test later:
-
-```text
-prematch fixture reaches kickoff
-→ prematch/games UpdateList
-→ prematch snapshot emptied / visibility false
-→ live topic may become active
-```
-
-Not fully proven yet, but very promising.
-
----
-
-# 58. CHROME SIDE FOR 76447253
-
-Chrome showed repeated XHR rows:
-
-```text
-https://analytics-sp.googleserv.tech/api/prematch/getprematchgamefull/28/76447253
-```
-
-Initiator:
-
-```text
-helpers.js?v=2.3.7:1
-```
-
-However these calls were at/after kickoff.
-
-Therefore:
-
-```text
-DO NOT conclude normal prematch polling from this test.
-```
-
-Could be lifecycle transition behavior.
-
----
-
-# 59. CURRENT BEST PREMATCH MODEL
-
-Evidence-based:
-
-```text
-prematch/header
-→ global metadata/update channel
-
-prematch/games
-→ GameId change notifications / lifecycle signals
-
-prematch/markets
-→ global 10-minute marker/version-like signal
-
-getprematchgameall
-→ partial state / partial update
-
-getprematchgamefull
-→ authoritative snapshot
-```
-
-Open question:
-
-```text
-When exactly does browser call gamefull while match is still cleanly PREMATCH?
-```
-
----
-
-# 60. CURRENT MAIN UNRESOLVED QUESTION
-
-Need to prove frontend behavior for a match still safely in PREMATCH state.
-
-Specifically:
-
-```text
-prematch/games UpdateList contains open GameId
-→ does browser call getprematchgamefull?
-→ does browser call getprematchgameall?
-→ both?
-→ only on some events?
-```
-
----
-
-# 61. NEXT TEST MUST AVOID KICKOFF CONTAMINATION
-
-Do NOT use a match starting in 4–5 minutes.
-
-Use:
-
-```text
-15–30 minutes before kickoff
-```
-
-preferably one with active odds.
-
-Reason:
-
-Need enough observation window to catch a genuine prematch odds/state update before lifecycle transition.
-
----
-
-# 62. NEXT EXPERIMENT DESIGN
-
-Choose one match:
-
-```text
-GameId = X
-kickoff at least 15–30 minutes away
-```
-
-Run simultaneously:
-
-Terminal:
+Collector:
 
 ```bash
-cd ~/Desktop/Projects/mystake-collector
 uv run python inspect_prematch_games.py
 ```
 
-Chrome:
+---
+
+# 20. CRITICAL OBSERVATION — 20:55 EVENT
+
+Collector:
 
 ```text
-DevTools
-→ Network
-→ Fetch/XHR
-→ Preserve log ON
-→ filter = X
-→ clear list
+UPDATE GAME IDS
+GameId=76295723 timestamp=1790013300 known=True
+GameId=76373459 timestamp=1790013300 known=True
+GameId=76433701 timestamp=1790013300 known=True
+
+20:55:06.390
+Fetching prematch DELTA batch games=3
 ```
 
-Also optionally keep Socket in another DevTools window.
-
-Wait until collector prints:
+Collector kendi logic’i nedeniyle:
 
 ```text
-GameId=X
+getprematchgameall/fr/28/?games=,76295723,76373459,76433701
 ```
 
-inside:
+çekti.
+
+Bu browser call değil.
+
+HAR export edildi ve analiz edildi.
+
+HAR filename:
 
 ```text
+dfab0916-2a3d-46a4-b5f3-ce03277e1f92.har
+```
+
+Yeni chat’te bu dosya yoksa kullanıcıdan tekrar istenebilir.
+
+---
+
+# 21. HAR — CRITICAL PROOF
+
+HAR’dan görüldü:
+
+```text
+20:55:05.979
+GET /api/cache/get?key=prematch/games
+```
+
+Decoded response:
+
+```json
+{
+  "UpdateList": [
+    {
+      "GameId": 76295723,
+      "UpdateTimeStamp": 1790013300
+    },
+    {
+      "GameId": 76373459,
+      "UpdateTimeStamp": 1790013300
+    },
+    {
+      "GameId": 76433701,
+      "UpdateTimeStamp": 1790013300
+    }
+  ],
+  "DeleteList": []
+}
+```
+
+Ardından browser:
+
+```text
+20:55:06.540
+GET /api/prematch/getprematchgamefull/28/76433701
+```
+
+Fark:
+
+```text
+≈ 561 ms
+```
+
+Başka event:
+
+```text
+20:55:00.245
+prematch/games
+→ contains 76433701
+
+20:55:00.528
+gamefull/28/76433701
+
+difference ≈ 283 ms
+```
+
+Bu aynı GameId için tekrarlandı.
+
+---
+
+# 22. GAMEFULL CALLS FOR 76433701
+
+HAR’da toplam 7:
+
+```text
+20:55:00.528
+20:55:06.540
+20:55:30.869
+20:55:35.135
+20:57:01.035
+20:57:06.265
+20:57:06.822
+```
+
+Her birinin hemen öncesinde `prematch/games` içinde `76433701` bulunuyor.
+
+Correlation:
+
+```text
+7 / 7
+```
+
+Bu çok güçlü kanıt.
+
+---
+
+# 23. GAMEFULL SNAPSHOT DIFF
+
+İlk iki snapshot:
+
+```text
+20:55:00.528
+20:55:06.540
+```
+
+Parsed state tamamen aynı:
+
+```text
+markets = 60 → 60
+pc      = 267 → 267
+mc      = 76 → 76
+up      = 1790013300 → 1790013300
+vis     = false → false
+
+changed markets    = 0
+changed selections = 0
+coef changes       = 0
+lock changes       = 0
+```
+
+Dolayısıyla:
+
+```text
+prematch/games update
+≠ kesin odds değişikliği
+```
+
+Daha doğru model:
+
+```text
+prematch/games update
+≈ authoritative refresh / invalidation signal
+```
+
+---
+
+# 24. ACTUAL ODDS CHANGE SNAPSHOT
+
+Sonraki snapshot:
+
+```text
+20:55:30.869
+up = 1790013330
+```
+
+Öncekine göre:
+
+```text
+55 market changed
+194 selections changed
+194 coef changes
+0 lock changes
+0 added markets
+0 removed markets
+```
+
+Örnek:
+
+```text
+Market 387:
+6.55 → 6.81
+2.37 → 2.39
+1.98 → 1.94
+
+Market 389:
+1.79 → 1.82
+1.98 → 1.94
+
+Market 395:
+2.15 → 2.17
+1.58 → 1.56
+```
+
+Aynı state bazen birkaç saniye sonra tekrar fetch ediliyor.
+
+---
+
+# 25. STATE GROUPS
+
+Observed:
+
+```text
+20:55:00 / 20:55:06
+→ STATE A
+
+20:55:30 / 20:55:35
+→ STATE B
+
+20:57:01 / 20:57:06 / 20:57:06
+→ STATE C
+```
+
+Yani multiple invalidation/refresh çağrısı aynı authoritative state’i döndürebiliyor.
+
+---
+
+# 26. GAMEALL IN HAR
+
+Bu HAR observation session’ında:
+
+```text
+getprematchgameall calls = 0
+getprematchgamefull calls = 172
+```
+
+`76433701` için:
+
+```text
+gameall = 0
+gamefull = 7
+```
+
+Bu HAR’daki realtime prematch detail refresh chain:
+
+```text
+prematch/games
+→ gamefull
+```
+
+şeklinde.
+
+`gameall` bu realtime refresh zincirinin parçası görünmüyor.
+
+Gameall muhtemelen başka screen/use-case için kullanılıyor olabilir.
+
+Henüz formal olarak hangi use-case olduğu bilinmiyor.
+
+---
+
+# 27. UpdateTimeStamp VS game.up
+
+`76433701` için observed examples:
+
+```text
+UpdateTimeStamp      gamefull.game.up
+--------------------------------------
+1790013300367        1790013300
+1790013300           1790013300
+1790013330430        1790013330
+1790013331           1790013330
+1790013420602        1790013420
+1790013421           1790013420
+1790013421           1790013420
+```
+
+13-digit values normalize edilince aynı saniye family’sine düşüyor:
+
+```text
+1790013300367 ms
+→ 1790013300.367 sec
+
+game.up
+→ 1790013300
+```
+
+Strong evidence:
+
+```text
+prematch/games.UpdateTimeStamp
+≈ notification/update timestamp
+
+gamefull.game.up
+≈ authoritative state update/version timestamp
+```
+
+Aynı exact field oldukları henüz kesin değil.
+
+Bazı örneklerde ~1 sec fark var.
+
+---
+
+# 28. GLOBAL HAR ANALYSIS
+
+HAR genelinde:
+
+```text
+prematch/games update entries ≈ 5139
+distinct GameIds ≈ 2006
+
+gamefull calls = 172
+distinct gamefull GameIds = 28
+```
+
+Bu çok önemli:
+
+```text
+prematch/games
+= global update stream
+```
+
+Ama browser:
+
+```text
+all GameIds → gamefull
+```
+
+yapmıyor.
+
+Sadece frontend açısından relevant/active olan subset için fetch yapıyor.
+
+---
+
+# 29. GLOBAL CORRELATION
+
+172 total `gamefull` call analiz edildi.
+
+Same GameId için preceding `prematch/games` update correlation:
+
+```text
+≤ 0.5 sec  → 88
+≤ 1.0 sec  → 153
+≤ 1.5 sec  → 162
+≤ 2.0 sec  → 164
+≤ 3.0 sec  → 167
+```
+
+Özellikle:
+
+```text
+164 / 172
+≈ 95.3%
+```
+
+gamefull call, aynı GameId için önceki 2 saniye içindeki `prematch/games` update ile eşleşiyor.
+
+Kalanlar çoğunlukla same-trigger fetch burst/repeated refresh pattern’ine benziyor.
+
+---
+
+# 30. GAMEID-LEVEL CORRELATION
+
+28 farklı GameId’nin:
+
+```text
+28 / 28
+```
+
+en az bir `gamefull` çağrısından hemen önce aynı GameId’yi taşıyan `prematch/games` update’i var.
+
+Daha detaylı:
+
+```text
+26 / 28 GameId
+→ tüm gamefull calls ≤2 sec correlation
+
+27 / 28 GameId
+→ tüm gamefull calls ≤3 sec correlation
+```
+
+Main exception:
+
+```text
+76251894
+```
+
+Burada tek update ardından seri fetch burst var:
+
+```text
++0.284 s
++0.566 s
++1.129 s
++1.696 s
++2.257 s
++2.823 s
++3.384 s
++3.943 s
++4.504 s
++5.074 s
++5.630 s
+```
+
+Bu independent triggers’dan çok repeated refresh/burst gibi görünüyor.
+
+---
+
+# 31. IMPORTANT FRONTEND MODEL
+
+Current strongest evidence-based model:
+
+```text
+prematch/games
+        ↓
+global UpdateList
+        ↓
+frontend checks whether GameId is relevant/active
+        ↓
+if relevant
+        ↓
+getprematchgamefull/28/{GameId}
+        ↓
+replace/refresh authoritative state
+```
+
+IMPORTANT:
+
+```text
+prematch/games UpdateList entry
+≠ guaranteed data change
+```
+
+Daha doğru interpretation:
+
+```text
+"This GameId should be revalidated/refreshed."
+```
+
+---
+
+# 32. WHY ONLY SOME GAME IDS?
+
+`prematch/games` 2006 farklı GameId taşıdı.
+
+Ama browser sadece 28 farklı GameId için `gamefull` çekti.
+
+Bu frontend’in bir:
+
+```text
+active / relevant fixture set
+```
+
+tuttuğunu güçlü şekilde gösteriyor.
+
+HAR tek başına bunun UI nedenini kesin olarak söylemiyor.
+
+Possible relevance mechanisms:
+
+```text
+visible fixtures
+active league/competition
+current sport
+nearby kickoff window
+detail page
+application state
+carousel/list
+```
+
+Henüz hangisi kesin bilinmiyor.
+
+---
+
+# 33. RELEVANT FIXTURE SET CLUES
+
+Gamefull çekilen 28 GameId:
+
+```text
+sport=1
+```
+
+grubunda kümeleniyor.
+
+Kickoff times da cluster gösteriyor.
+
+Örnek time clusters:
+
+```text
+17:45 UTC
+17:50 UTC
+18:00 UTC
+18:30 UTC
+18:45 UTC
+```
+
+Ayrıca aynı `ch` değerine sahip bazı maçlar birlikte gamefull fetch ediliyor.
+
+Örnek:
+
+```text
+ch=38220
+
+76365207
+76369418
+76433701
+76433705
+76462118
+```
+
+Başka örnek:
+
+```text
+ch=7678
+
+76250972
+76295719
+76295739
+```
+
+Başka:
+
+```text
+ch=57630
+
+76449654
+76449657
+```
+
+Başka:
+
+```text
+ch=69573
+
+76396571
+76396601
+76396574
+```
+
+Bu şu hipotezi güçlendiriyor:
+
+```text
+frontend active sport/league/fixture groups
+→ prematch/games global update
+→ if GameId belongs to active set
+→ gamefull
+```
+
+Ancak:
+
+```text
+"same ch = exact reason"
+```
+
+henüz PROVEN değil.
+
+---
+
+# 34. CURRENT COLLECTOR VS BROWSER
+
+Current collector:
+
+```text
+prematch/games
+→ getprematchgameall
+→ partial merge
+→ pc check
+→ periodic gamefull reconciliation
+```
+
+Observed browser:
+
+```text
+prematch/games
+→ relevant GameId?
+→ getprematchgamefull
+→ authoritative refresh
+```
+
+Bu fark çok önemli.
+
+Collector architecture muhtemelen değişecek.
+
+AMA HENÜZ DEĞİŞTİRME.
+
+Önce relevance selection logic hakkında bir temiz deney daha yap.
+
+---
+
+# 35. DO NOT YET
+
+Henüz:
+
+```text
+inspect_prematch_games.py production refactor
+DB
+Redis
+Kafka/RabbitMQ
+Java rewrite
+reconciliation policy rewrite
+```
+
+yapma.
+
+Önce frontend relevant-set behavior’ını biraz daha kanıtla.
+
+---
+
+# 36. EXACT NEXT EXPERIMENT — THIS IS THE NEXT STEP
+
+Yeni chat’te ilk görev BU.
+
+MyStake’ta **tek bir league / competition page** açılacak.
+
+Mümkünse o competition içinde:
+
+```text
+5–20 prematch matches
+```
+
+olsun.
+
+Test sırasında:
+
+```text
+tek competition açık
+başka prematch league/tab açma
+Network Preserve Log ON
+Network clear
+5–10 dakika observe
+HAR export
+```
+
+Kullanıcı önce competition/league URL’sini gönderecek.
+
+İlk yapacağın şey:
+
+```text
+URL'yi incele
+→ clean test setup ver
+```
+
+Sonra HAR alınacak.
+
+HAR’dan çıkarılacaklar:
+
+```text
+1. gamefull çekilen tüm GameId'ler
+2. her GameId'nin sport değeri
+3. her GameId'nin ch değeri
+4. açık competition'ın ch değeri
+5. kaç gamefull GameId aynı ch'ye ait
+6. farklı ch'ye ait olanlar neden fetch edilmiş olabilir
+7. timing:
+   prematch/games
+   → gamefull latency
+```
+
+Goal:
+
+```text
+Does frontend's relevant fixture set
+correspond primarily to the currently open competition?
+```
+
+Eğer yüksek oranda aynı `ch` çıkarsa:
+
+```text
+prematch/games
+→ frontend active competition filter
+→ gamefull relevant fixtures
+```
+
+modeli ciddi şekilde güçlenecek.
+
+---
+
+# 37. WHAT WE SHOULD NOT CLAIM YET
+
+Şunları henüz kesin söyleme:
+
+```text
+gamefull always follows every prematch/games entry
+```
+
+Yanlış.
+
+Global stream çok büyük; only relevant subset fetch ediliyor.
+
+Şunu da kesin söyleme:
+
+```text
+relevant = same ch
+```
+
+Henüz hypothesis.
+
+Şunu da kesin söyleme:
+
+```text
+UpdateTimeStamp == game.up
+```
+
+Çok güçlü relation var ama exact semantics henüz proven değil.
+
+---
+
+# 38. CURRENT PROVEN FACTS SUMMARY
+
+```text
+MQTT connection                         ✅
+reconnect/resubscribe                   ✅
+unsubscribe                             ✅
+cache indirection                       ✅
+live exact topic                        ✅
+live diff                               ✅
+match end                               ✅
+
+prematch/header                         ✅
+prematch/games                          ✅
+prematch/markets                        ✅
+
+gameall endpoint                        ✅
+gamefull endpoint                       ✅
+
+gameall partial                         ✅
+gameall complete logical delta          ❌ disproven
+missing gameall market = unchanged      ❌ disproven
+pc match = exact state                  ❌ disproven
+
+gamefull authoritative                  ✅
+
 prematch/games UpdateList
-```
+→ browser gamefull correlation          ✅ strong proof
 
-Then compare browser network events.
+76433701 correlation                    7/7
 
----
+global same-GameId ≤2 sec correlation   164/172 ≈95.3%
 
-# 63. DO NOT COMPARE TIMESTAMPS MANUALLY IN DEVTOOLS
+28/28 gamefull GameIds have preceding
+same-GameId prematch/games signal       ✅
 
-Chrome Network table does not show convenient absolute timestamps.
+HAR realtime gameall calls              0
+HAR gamefull calls                      172
 
-Manual visual comparison became confusing.
+prematch/games likely invalidation /
+refresh signal                          ✅ very strong evidence
 
-Better next approach:
+frontend relevant fixture set           ✅ strong evidence
 
-```text
-EXPORT HAR
-```
+exact relevance selection logic         ⏳ NEXT
 
-HAR contains exact:
-
-```text
-startedDateTime
-request.url
-timings
-duration
-```
-
-This can be correlated with collector log timestamps.
-
----
-
-# 64. RECOMMENDED NEXT TECHNICAL STEP — HAR CORRELATION
-
-For clean prematch test:
-
-```text
-1. Open match 15–30 minutes before kickoff
-2. Clear Network
-3. Preserve log ON
-4. Record traffic
-5. Let collector run
-6. Wait for GameId in UpdateList
-7. Export Network as HAR
-8. Compare HAR timestamps to terminal logs
-```
-
-Goal output:
-
-```text
-11:32:14.527
-prematch/games → GameId=X
-
-11:32:14.641
-browser → getprematchgamefull/28/X
-
-difference = 114 ms
-```
-
-or:
-
-```text
-no corresponding gamefull
-```
-
-This will prove trigger relationship much more reliably.
-
----
-
-# 65. POSSIBLE AUTOMATION LATER
-
-Once we have a HAR file, create a small parser script, possibly:
-
-```text
-analyze_har_prematch.py
-```
-
-Input:
-
-```text
-HAR file
-GameId
-```
-
-Output:
-
-```text
-timestamp
-URL
-initiator if available
-duration
-```
-
-Then compare with collector logs.
-
-Do this only after getting a clean HAR sample.
-
----
-
-# 66. IMPORTANT: DO NOT MODIFY CORE PYTHON YET
-
-Current objective is still protocol discovery.
-
-Do NOT yet:
-
-```text
-refactor inspect_prematch_games.py into production modules
-add DB
-add Redis
-add Kafka/RabbitMQ
-rewrite in Java
-change reconciliation policy heavily
-```
-
-First solve frontend update behavior.
-
----
-
-# 67. CURRENT MOST IMPORTANT PROVEN FACTS
-
-Keep these front and center:
-
-```text
-gameall is partial
-```
-
-```text
-gameall is not a complete logical delta
-```
-
-```text
-market missing from gameall
-≠ removed
-```
-
-```text
-market missing from gameall
-≠ unchanged
-```
-
-```text
-pc match
-≠ exact state correctness
-```
-
-```text
-gamefull is authoritative
-```
-
-```text
-prematch/games is a real update signal
-```
-
-```text
-prematch/markets exists but appears to be a 10-minute marker
-```
-
-```text
-kickoff can trigger prematch/games with empty/hidden prematch state
+same ch/open competition relation        ⏳ NEXT EXPERIMENT
 ```
 
 ---
 
-# 68. CURRENT MILESTONE STATUS
+# 39. NEXT CHAT OPENING PROMPT
 
-```text
-MQTT connection                          ✅
-CONNECT / CONNACK                        ✅
-SUBSCRIBE / SUBACK                       ✅
-PUBLISH                                  ✅
-PING                                     ✅
-reconnect                                ✅
-resubscribe                              ✅
-unsubscribe                              ✅
-
-cache indirection                        ✅
-cache fetch                              ✅
-base64/gzip/json decode                  ✅
-
-live/gamenew/{GameId}                    ✅
-live updates                             ✅
-live diff                                ✅
-live semantic events                     ✅
-match-end                                ✅
-cleanup                                  ✅
-
-prematch/header                          ✅
-prematch/games                           ✅
-prematch/markets                         ✅
-
-prematch/games UpdateList                ✅
-duplicate suppression                    ✅
-DeleteList observed                      ✅ but semantics unknown
-
-getprematchgameall                       ✅
-getprematchgamefull                      ✅
-gameall batch support                    ✅
-team mapping                             ✅
-
-gameall partial                          ✅ PROVEN
-gamefull authoritative                   ✅ PROVEN
-market-level replacement                 ✅ useful approximation
-
-pc mismatch resync                       ✅
-real prematch odds changes               ✅
-real selection additions                 ✅
-
-pc match = exact state                   ❌ DISPROVEN
-missing market = unchanged               ❌ DISPROVEN
-gameall complete logical delta            ❌ DISPROVEN
-
-stable authoritative mismatch            ✅
-periodic reconciliation repair           ✅
-
-prematch/markets actual odds payload      ❌
-prematch/markets timestamp marker         ✅ strong evidence
-
-clean browser update trigger              ⏳ NEXT
-prematch → live transition                ⏳ partly observed
-DeleteList semantics                      ⏳
-pc formal semantics                       ⏳
-mc formal semantics                       ⏳
-persistent fixture registry               ⏳ later
-storage                                    ⏳ later
-```
-
----
-
-# 69. EXACT NEXT SESSION STARTING PROMPT
-
-Yeni chat açıldığında şunu yaz:
+Yeni chat’e bu context’in tamamını koyduktan sonra en alta şunu yaz:
 
 ```text
 Devam edelim.
 
-Project: mystake-collector.
+Bir sonraki görevimiz relevant fixture set hipotezini test etmek.
 
-Şu ana kadar:
-- live MQTT tarafı çalışıyor.
-- prematch/header, prematch/games, prematch/markets topic’lerini bulduk.
-- gameall partial ve complete logical delta değil.
-- gamefull authoritative.
-- pc match exact correctness garanti etmiyor.
-- reconciliation ile bunu kanıtladık.
-- prematch/markets cache’i gerçek market data değil, 10 dakikalık timestamp/version marker gibi davranıyor.
-- kickoff civarında prematch/games içinde GameId geldiğinde gameall/gamefull state’in 0 market / 0 selection / visible=false olduğu örnek gördük.
-- son testler kickoff’a çok yakın olduğu için browser tarafındaki gamefull çağrıları temiz prematch update davranışı olarak kullanılamadı.
+MyStake'ta tek bir league/competition sayfası açacağım.
+Mümkünse 5–20 prematch fixture olacak.
 
-Şimdi hedef:
-15–30 dakika sonra başlayacak temiz bir prematch maç seçip
-prematch/games UpdateList içindeki GameId ile
-browser Fetch/XHR request’lerini HAR timestamp üzerinden korele etmek.
+Sana league/competition URL'sini göndereceğim.
 
-Önce yeni match URL/GameId seçeceğiz.
-Sonra DevTools recording + HAR export yapacağız.
-Daha sonra gerekirse HAR parser yazacağız.
+Sonra:
+- Chrome Network temizlenecek
+- Preserve Log açık olacak
+- 5–10 dakika traffic toplanacak
+- HAR export edilecek
 
-Kod tarafında henüz production refactor yapmıyoruz.
-Protocol correctness öncelikli.
+HAR'dan:
+- gamefull GameId'leri
+- sport
+- ch
+- açık competition ch
+- prematch/games → gamefull correlation
+çıkaracağız.
 
-Bana tek adım ver, ben terminal/DevTools çıktısını göndereyim.
+Amacımız browser'ın relevant fixture set'inin açık competition ile ilişkisini kanıtlamak.
+
+Henüz collector code architecture'ını değiştirmiyoruz.
+
+Bana tek adım ver, ben sonucu göndereyim.
 ```
 
 ---
 
-# 70. FINAL REMINDER
+# 40. MOST IMPORTANT REMINDER
 
-Şu anda en büyük hata şunu yapmak olur:
-
-```text
-gameall merge logic'i biraz daha tweak ederek
-problemi çözdüğümüzü sanmak
-```
-
-Çünkü artık kanıtlandı:
+Şu an elimizdeki en önemli mimari bulgu:
 
 ```text
-gameall bazı authoritative changes'i hiç taşımıyor
+OLD ASSUMPTION
+
+prematch/games
+→ gameall delta
+→ merge
+→ occasional full reconciliation
 ```
 
-Gerçek frontend davranışını anlamamız gerekiyor.
-
-Bir sonraki hedef:
+yerine browser gerçek davranışı şu yönde:
 
 ```text
-CLEAN PREMATCH TEST
-→ UpdateList event
-→ HAR
-→ exact browser request correlation
+prematch/games
+→ relevant GameId
+→ gamefull
+→ authoritative refresh
 ```
 
-Bunu çözmeden production architecture’a geçme.
+görünüyor.
+
+Bu yüzden artık `gameall` merge logic’i üzerinde daha fazla tweak yaparak zaman kaybetme.
+
+Önce relevant fixture selection behavior’ını çöz.
+
+Sonra collector architecture’ını yeniden değerlendir.
