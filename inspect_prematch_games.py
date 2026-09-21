@@ -20,6 +20,7 @@ PREMATCH_CONTEXT_ID = 28
 PREMATCH_LANGUAGE = "fr"
 
 PRINT_STATS_EVERY_NOTIFICATIONS = 25
+RECONCILE_EVERY_GAME_MERGES = 10
 
 
 # ======================================================================================
@@ -42,6 +43,19 @@ class PrematchStats:
     count_mismatches: int = 0
 
     full_resyncs: int = 0
+
+    reconciliation_checks: int = 0
+    reconciliation_exact_matches: int = 0
+    reconciliation_repairs: int = 0
+    reconciliation_races: int = 0
+
+    sampled_validations: int = 0
+    sampled_exact_matches: int = 0
+    sampled_mismatches: int = 0
+    sampled_races: int = 0
+    sampled_stable_mismatches: int = 0
+    sampled_hidden_races: int = 0
+    sampled_unclassified_mismatches: int = 0
 
     logical_changes: int = 0
     no_op_updates: int = 0
@@ -122,6 +136,61 @@ def print_stats(stats: PrematchStats) -> None:
     )
 
     print(
+        f"Reconciliation checks    : "
+        f"{stats.reconciliation_checks}"
+    )
+
+    print(
+        f"Reconciliation matches   : "
+        f"{stats.reconciliation_exact_matches}"
+    )
+
+    print(
+        f"Reconciliation repairs   : "
+        f"{stats.reconciliation_repairs}"
+    )
+
+    print(
+        f"Reconciliation races     : "
+        f"{stats.reconciliation_races}"
+    )
+
+    print(
+        f"Sampled validations      : "
+        f"{stats.sampled_validations}"
+    )
+
+    print(
+        f"Sampled exact matches    : "
+        f"{stats.sampled_exact_matches}"
+    )
+
+    print(
+        f"Sampled mismatches       : "
+        f"{stats.sampled_mismatches}"
+    )
+
+    print(
+        f"Sampled races            : "
+        f"{stats.sampled_races}"
+    )
+
+    print(
+        f"Stable mismatches        : "
+        f"{stats.sampled_stable_mismatches}"
+    )
+
+    print(
+        f"Hidden same-up races     : "
+        f"{stats.sampled_hidden_races}"
+    )
+
+    print(
+        f"Unclassified mismatches  : "
+        f"{stats.sampled_unclassified_mismatches}"
+    )
+
+    print(
         f"Logical changes          : "
         f"{stats.logical_changes}"
     )
@@ -172,6 +241,23 @@ def print_stats(stats: PrematchStats) -> None:
         print(
             f"Direct merge count-match : "
             f"{success_rate:.2f}%"
+        )
+
+    conclusive_validations = (
+        stats.sampled_exact_matches
+        + stats.sampled_mismatches
+    )
+
+    if conclusive_validations > 0:
+        exact_state_rate = (
+            stats.sampled_exact_matches
+            / conclusive_validations
+            * 100
+        )
+
+        print(
+            f"Sampled exact-state rate : "
+            f"{exact_state_rate:.2f}%"
         )
 
     print("=" * 100)
@@ -920,6 +1006,579 @@ def state_selection_count_matches_pc(
     )
 
 
+def states_exactly_match(
+    local_state: dict[str, Any],
+    full_state: dict[str, Any],
+) -> bool:
+    return (
+        canonical_json(local_state)
+        == canonical_json(full_state)
+    )
+
+
+def print_sample_validation_mismatch(
+    local_state: dict[str, Any],
+    full_state: dict[str, Any],
+    delta: dict[str, Any],
+    team_map: dict[int | str, str],
+) -> None:
+    game_id = local_state.get("id")
+
+    print()
+    print("!" * 100)
+    print(
+        "SAMPLED FULL VALIDATION MISMATCH "
+        f"gameId={game_id}"
+    )
+    print("!" * 100)
+
+    team1_id = local_state.get("t1")
+    team2_id = local_state.get("t2")
+
+    print(
+        "Match             : "
+        f"{team_name(team_map, team1_id)}"
+        " vs "
+        f"{team_name(team_map, team2_id)}"
+    )
+
+    print(
+        f"local up          : "
+        f"{local_state.get('up')}"
+    )
+    print(
+        f"full up           : "
+        f"{full_state.get('up')}"
+    )
+
+    print(
+        f"local pc          : "
+        f"{local_state.get('pc')}"
+    )
+    print(
+        f"full pc           : "
+        f"{full_state.get('pc')}"
+    )
+
+    print(
+        f"local markets     : "
+        f"{count_markets(local_state)}"
+    )
+    print(
+        f"full markets      : "
+        f"{count_markets(full_state)}"
+    )
+
+    print(
+        f"local selections  : "
+        f"{count_selections(local_state)}"
+    )
+    print(
+        f"full selections   : "
+        f"{count_selections(full_state)}"
+    )
+
+    scalar_changes = diff_scalar_fields(
+        local_state,
+        full_state,
+    )
+
+    market_diff = diff_full_markets(
+        local_state,
+        full_state,
+    )
+
+    markets_only_full = market_diff[
+        "added_markets"
+    ]
+    markets_only_local = market_diff[
+        "removed_markets"
+    ]
+    changed_markets = market_diff[
+        "changed_markets"
+    ]
+
+    delta_markets = get_markets(delta)
+
+    if scalar_changes:
+        print()
+        print("SCALAR FIELD MISMATCHES")
+        print("-" * 100)
+
+        for field, change in (
+            scalar_changes.items()
+        ):
+            print(
+                f"{field}: "
+                f"local={change['old']} "
+                f"full={change['new']}"
+            )
+
+    if markets_only_local:
+        print()
+        print("MARKETS ONLY LOCAL")
+        print("-" * 100)
+
+        for market_id in markets_only_local:
+            print(
+                f"{market_id} "
+                f"present_in_delta="
+                f"{market_id in delta_markets}"
+            )
+
+    if markets_only_full:
+        print()
+        print("MARKETS ONLY FULL")
+        print("-" * 100)
+
+        for market_id in markets_only_full:
+            print(
+                f"{market_id} "
+                f"present_in_delta="
+                f"{market_id in delta_markets}"
+            )
+
+    for (
+        market_id,
+        market_change,
+    ) in changed_markets.items():
+        print()
+        print(
+            f"COMMON MARKET MISMATCH "
+            f"market={market_id}"
+        )
+        print(
+            f"present_in_current_delta="
+            f"{market_id in delta_markets}"
+        )
+        print("-" * 100)
+
+        selections_only_full = (
+            market_change[
+                "added_selections"
+            ]
+        )
+
+        selections_only_local = (
+            market_change[
+                "removed_selections"
+            ]
+        )
+
+        changed_selections = (
+            market_change[
+                "changed_selections"
+            ]
+        )
+
+        if selections_only_local:
+            print(
+                "selections only local:",
+                selections_only_local,
+            )
+
+        if selections_only_full:
+            print(
+                "selections only full :",
+                selections_only_full,
+            )
+
+        for (
+            selection_id,
+            field_changes,
+        ) in changed_selections.items():
+            print(
+                f"same selection changed "
+                f"selection={selection_id}"
+            )
+
+            for (
+                field,
+                change,
+            ) in field_changes.items():
+                print(
+                    f"  {field}: "
+                    f"local={change['old']} "
+                    f"full={change['new']}"
+                )
+
+
+def print_second_full_comparison(
+    *,
+    merged_state: dict[str, Any],
+    full_state_1: dict[str, Any],
+    full_state_2: dict[str, Any],
+) -> None:
+    print()
+    print("=" * 100)
+    print("SECOND FULL SNAPSHOT DIAGNOSTIC")
+    print("=" * 100)
+
+    print(
+        f"merged up : {merged_state.get('up')}"
+    )
+    print(
+        f"full #1 up: {full_state_1.get('up')}"
+    )
+    print(
+        f"full #2 up: {full_state_2.get('up')}"
+    )
+
+    print(
+        "local == full #2: "
+        f"{states_exactly_match(merged_state, full_state_2)}"
+    )
+    print(
+        "full #1 == full #2: "
+        f"{states_exactly_match(full_state_1, full_state_2)}"
+    )
+
+    full_to_full_scalar = diff_scalar_fields(
+        full_state_1,
+        full_state_2,
+    )
+    full_to_full_markets = diff_full_markets(
+        full_state_1,
+        full_state_2,
+    )
+
+    if (
+        full_to_full_scalar
+        or full_to_full_markets["added_markets"]
+        or full_to_full_markets["removed_markets"]
+        or full_to_full_markets["changed_markets"]
+    ):
+        print()
+        print("FULL #1 -> FULL #2 CHANGED")
+        print("-" * 100)
+
+        if full_to_full_scalar:
+            print(
+                "scalar fields:",
+                sorted(full_to_full_scalar),
+            )
+
+        if full_to_full_markets["added_markets"]:
+            print(
+                "markets added:",
+                full_to_full_markets[
+                    "added_markets"
+                ],
+            )
+
+        if full_to_full_markets["removed_markets"]:
+            print(
+                "markets removed:",
+                full_to_full_markets[
+                    "removed_markets"
+                ],
+            )
+
+        if full_to_full_markets["changed_markets"]:
+            print(
+                "markets changed:",
+                sorted(
+                    full_to_full_markets[
+                        "changed_markets"
+                    ]
+                ),
+            )
+
+
+def perform_sampled_full_validation(
+    *,
+    client: httpx.Client,
+    game_id: int | str,
+    merged_state: dict[str, Any],
+    delta: dict[str, Any],
+    team_map: dict[int | str, str],
+    stats: PrematchStats,
+) -> None:
+    try:
+        full_state_1 = fetch_gamefull(
+            client,
+            game_id,
+        )
+    except Exception:
+        logging.exception(
+            "Sampled full validation fetch failed "
+            "gameId=%s",
+            game_id,
+        )
+        return
+
+    stats.sampled_validations += 1
+
+    merged_up = merged_state.get("up")
+    full_up = full_state_1.get("up")
+
+    print()
+    print("=" * 100)
+    print(
+        "SAMPLED FULL VALIDATION "
+        f"gameId={game_id}"
+    )
+    print("=" * 100)
+
+    print(
+        f"merged up : {merged_up}"
+    )
+    print(
+        f"full up   : {full_up}"
+    )
+
+    if merged_up != full_up:
+        stats.sampled_races += 1
+
+        print()
+        print(
+            "RESULT: INCONCLUSIVE / "
+            "STATE ADVANCED"
+        )
+        return
+
+    if states_exactly_match(
+        merged_state,
+        full_state_1,
+    ):
+        stats.sampled_exact_matches += 1
+
+        print()
+        print("RESULT: EXACT MATCH")
+        return
+
+    print()
+    print("RESULT: EXACT MISMATCH")
+
+    print_sample_validation_mismatch(
+        merged_state,
+        full_state_1,
+        delta,
+        team_map,
+    )
+
+    print()
+    print(
+        "Fetching immediate second FULL snapshot "
+        "to distinguish stable mismatch from hidden race..."
+    )
+
+    try:
+        full_state_2 = fetch_gamefull(
+            client,
+            game_id,
+        )
+    except Exception:
+        stats.sampled_unclassified_mismatches += 1
+
+        logging.exception(
+            "Second full validation fetch failed "
+            "gameId=%s",
+            game_id,
+        )
+
+        print()
+        print(
+            "CLASSIFICATION: UNCLASSIFIED_MISMATCH "
+            "(second full fetch failed)"
+        )
+        return
+
+    print_second_full_comparison(
+        merged_state=merged_state,
+        full_state_1=full_state_1,
+        full_state_2=full_state_2,
+    )
+
+    if states_exactly_match(
+        full_state_1,
+        full_state_2,
+    ):
+        stats.sampled_mismatches += 1
+        stats.sampled_stable_mismatches += 1
+
+        print()
+        print(
+            "CLASSIFICATION: STABLE_MISMATCH"
+        )
+        print(
+            "Interpretation: authoritative full state "
+            "was stable across two immediate reads."
+        )
+        return
+
+    stats.sampled_races += 1
+    stats.sampled_hidden_races += 1
+
+    print()
+    print(
+        "CLASSIFICATION: HIDDEN_RACE / "
+        "STATE_ADVANCED_WITH_SAME_UP"
+    )
+    print(
+        "Interpretation: full state changed between "
+        "two immediate reads, so equal up values are "
+        "not a sufficient race-free version gate."
+    )
+
+
+# ======================================================================================
+# PERIODIC AUTHORITATIVE RECONCILIATION
+# ======================================================================================
+
+
+def perform_reconciliation(
+    *,
+    client: httpx.Client,
+    game_id: int | str,
+    merged_state: dict[str, Any],
+    delta: dict[str, Any],
+    team_map: dict[int | str, str],
+    stats: PrematchStats,
+) -> tuple[dict[str, Any], str]:
+    """
+    Periodically compare the locally merged state with authoritative gamefull.
+
+    This does not change merge semantics. It repairs local state when the
+    authoritative full snapshot differs. On mismatch, an immediate second full
+    read is used only for diagnostics/classification; the newest successful full
+    snapshot becomes the repaired local state.
+    """
+
+    stats.reconciliation_checks += 1
+
+    print()
+    print("=" * 100)
+    print(
+        "AUTHORITATIVE RECONCILIATION "
+        f"gameId={game_id}"
+    )
+    print("=" * 100)
+
+    try:
+        full_state_1 = fetch_gamefull(
+            client,
+            game_id,
+        )
+    except Exception:
+        logging.exception(
+            "Reconciliation full fetch failed "
+            "gameId=%s",
+            game_id,
+        )
+        return merged_state, "DELTA_MERGE"
+
+    merged_up = merged_state.get("up")
+    full_up_1 = full_state_1.get("up")
+
+    print(f"merged up : {merged_up}")
+    print(f"full #1 up: {full_up_1}")
+
+    if states_exactly_match(
+        merged_state,
+        full_state_1,
+    ):
+        stats.reconciliation_exact_matches += 1
+
+        print()
+        print("RESULT: EXACT MATCH - NO REPAIR NEEDED")
+
+        return merged_state, "DELTA_MERGE"
+
+    print()
+    print("RESULT: AUTHORITATIVE DIFFERENCE")
+
+    if merged_up != full_up_1:
+        stats.reconciliation_races += 1
+        print(
+            "NOTE: authoritative state advanced "
+            "relative to merged up."
+        )
+
+    print_sample_validation_mismatch(
+        merged_state,
+        full_state_1,
+        delta,
+        team_map,
+    )
+
+    repaired_state = full_state_1
+
+    print()
+    print(
+        "Fetching immediate second FULL snapshot "
+        "for reconciliation diagnostics..."
+    )
+
+    try:
+        full_state_2 = fetch_gamefull(
+            client,
+            game_id,
+        )
+    except Exception:
+        logging.exception(
+            "Second reconciliation full fetch failed "
+            "gameId=%s",
+            game_id,
+        )
+        full_state_2 = None
+
+    if full_state_2 is not None:
+        print_second_full_comparison(
+            merged_state=merged_state,
+            full_state_1=full_state_1,
+            full_state_2=full_state_2,
+        )
+
+        if not states_exactly_match(
+            full_state_1,
+            full_state_2,
+        ):
+            stats.reconciliation_races += 1
+
+            print()
+            print(
+                "RECONCILIATION CLASSIFICATION: "
+                "STATE_ADVANCED_DURING_CHECK"
+            )
+        else:
+            print()
+            print(
+                "RECONCILIATION CLASSIFICATION: "
+                "STABLE_AUTHORITATIVE_DIFFERENCE"
+            )
+
+        repaired_state = full_state_2
+
+    stats.reconciliation_repairs += 1
+
+    print()
+    print("!" * 100)
+    print("RECONCILIATION REPAIR")
+    print("!" * 100)
+    print(f"GameId : {game_id}")
+    print(
+        "Reason : AUTHORITATIVE_FULL_DIFFERENCE"
+    )
+    print(
+        "Action : local state replaced with newest "
+        "successful gamefull snapshot"
+    )
+    print(
+        f"Markets: {count_markets(merged_state)} "
+        f"-> {count_markets(repaired_state)}"
+    )
+    print(
+        f"Selections: {count_selections(merged_state)} "
+        f"-> {count_selections(repaired_state)}"
+    )
+
+    return (
+        deepcopy(repaired_state),
+        "PERIODIC_GAMEFULL_RECONCILIATION",
+    )
+
+
 # ======================================================================================
 # MAIN
 # ======================================================================================
@@ -965,6 +1624,11 @@ def main() -> None:
     ] = {}
 
     stats = PrematchStats()
+
+    successful_merges_since_reconcile: dict[
+        int | str,
+        int,
+    ] = {}
 
     try:
         mqtt_client.connect()
@@ -1260,6 +1924,10 @@ def main() -> None:
                         f"{state_selection_count_matches_pc(full_state)}"
                     )
 
+                    successful_merges_since_reconcile[
+                        game_id
+                    ] = 0
+
                     continue
 
                 # ==============================================================
@@ -1311,6 +1979,43 @@ def main() -> None:
                 if consistency is True:
                     stats.count_matches += 1
 
+                    game_merge_count = (
+                        successful_merges_since_reconcile.get(
+                            game_id,
+                            0,
+                        )
+                        + 1
+                    )
+
+                    successful_merges_since_reconcile[
+                        game_id
+                    ] = game_merge_count
+
+                    print(
+                        "Successful merges since reconciliation: "
+                        f"{game_merge_count}/"
+                        f"{RECONCILE_EVERY_GAME_MERGES}"
+                    )
+
+                    if (
+                        game_merge_count
+                        >= RECONCILE_EVERY_GAME_MERGES
+                    ):
+                        merged_state, source = (
+                            perform_reconciliation(
+                                client=prematch_http_client,
+                                game_id=game_id,
+                                merged_state=merged_state,
+                                delta=delta,
+                                team_map=team_map,
+                                stats=stats,
+                            )
+                        )
+
+                        successful_merges_since_reconcile[
+                            game_id
+                        ] = 0
+
                 elif consistency is False:
                     stats.count_mismatches += 1
 
@@ -1334,6 +2039,10 @@ def main() -> None:
                         )
 
                         stats.full_resyncs += 1
+
+                        successful_merges_since_reconcile[
+                            game_id
+                        ] = 0
 
                         source = (
                             "FULL_RESYNC_AFTER_"

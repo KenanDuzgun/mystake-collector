@@ -1,0 +1,1 @@
+Context doldugunu dusunuyorum. Simdi sen neler yaptıgımızı, neleri başardıgımızı ve sonra hangi adımları atacağımızı kendine hatırlatacak bir prompt  veta context map hazırlar mısın yeni bir chat penceresinde devam edelim. Eksik birşey olmasın. 
