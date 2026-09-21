@@ -1,126 +1,15 @@
 # MyStake Collector — Continuation Context / Handoff
 
-## 0. NEW CHAT — FIRST TASK
+## 0. NEW CHAT — READ THIS FIRST
 
 Bu doküman yeni ChatGPT chat session'ına verilecek.
-
-Kullanıcı ardından iki YENİ HAR dosyası yükleyecek:
-
-```text
-soccer.har
-basketball.har
-```
-
-Bunlar önceki HAR'lardan farklı olarak **aynı anda / paralel olarak** kaydedilecek.
 
 Amaç:
 
 ```text
-time progression / fixture lifecycle churn
+MyStake'ın prematch + live betting data lifecycle'ını
+browser bağımsız bir collector ile eksiksiz toplamak.
 ```
-
-ile:
-
-```text
-selected sport tab effect
-```
-
-etkilerini birbirinden ayırmak.
-
-Yeni chat'te:
-
-1. Bu handoff'u oku.
-2. Kullanıcının yüklediği YENİ `soccer.har` ve `basketball.har` dosyalarını programmatically analiz et.
-3. Dosyaları yeniden isteme.
-4. Ne yapılacağını sorma.
-5. Collector kodunu henüz değiştirme.
-6. Önce paralel HAR deneyinin sonucunu kesin şekilde çıkar.
-
----
-
-# 1. CURRENT CORE RESEARCH QUESTION
-
-Şu anda çözmeye çalıştığımız ana problem:
-
-```text
-How does MyStake frontend determine
-which prematch GameIds are relevant/active?
-```
-
-Özellikle:
-
-```text
-/prematch/upcoming
-```
-
-sayfasında seçili sport tab:
-
-```text
-Soccer
-Basketball
-Tennis
-...
-```
-
-frontend'in hangi GameId'leri:
-
-```text
-getprematchgamefull
-```
-
-ile refresh edeceğini etkiliyor mu?
-
-Ana soru:
-
-```text
-Does selected sport materially influence
-the frontend relevant GameId universe?
-```
-
----
-
-# 2. WORKING PRINCIPLE
-
-Her zaman:
-
-```text
-observe
-→ experiment
-→ prove
-→ only then productionize
-```
-
-Bulguları mümkün olduğunca:
-
-```text
-PROVEN
-STRONG EVIDENCE
-HYPOTHESIS
-UNKNOWN
-```
-
-olarak sınıflandır.
-
-Protocol semantics tahmin edilmemeli.
-
-Bir deney tamamlanmadan başka mimari değişikliğe geçme.
-
-Şu anda:
-
-```text
-NO production refactor
-NO Java rewrite
-NO DB
-NO Redis
-NO Kafka/RabbitMQ
-NO premature architecture rewrite
-```
-
-Önce browser'ın gerçek davranışını çöz.
-
----
-
-# 3. PROJECT
 
 Project:
 
@@ -156,58 +45,70 @@ Known baseline:
 47 passed
 ```
 
-Prematch inspection:
+Ana çalışma prensibi:
 
-```bash
-uv run python inspect_prematch_games.py
+```text
+observe
+→ experiment
+→ prove
+→ only then productionize
 ```
 
-Main:
+Bulguları mümkün olduğunca:
 
-```bash
-uv run python main.py
+```text
+PROVEN
+STRONG EVIDENCE
+HYPOTHESIS
+UNKNOWN
 ```
+
+olarak sınıflandır.
+
+Şimdilik:
+
+```text
+NO premature Java rewrite
+NO DB redesign
+NO Redis
+NO Kafka/RabbitMQ
+NO production refactor before protocol is understood
+```
+
+Önce MyStake frontend'in gerçek davranışını çöz.
 
 ---
 
-# 4. PROJECT GOAL
+# 1. PROJECT GOAL
 
-Amaç browser bağımsız şekilde MyStake betting data lifecycle'ını toplamak.
+Amaç sadece live maçları toplamak değil.
 
 Full lifecycle:
 
 ```text
 fixture discovery
 → PREMATCH
-→ prematch markets/selections/odds
+→ prematch markets / selections / odds
 → prematch updates
 → kickoff
 → LIVE
-→ live markets/odds/score
+→ live markets / odds / score
 → MATCH_ENDED
 → final state
 → cleanup
 ```
 
-Sadece live maçları toplamak istemiyoruz.
-
-Collector'ın amacı:
-
-```text
-full fixture lifecycle
-```
+Collector browser olmadan bu lifecycle'ı sürdürebilmeli.
 
 ---
 
-# 5. CURRENT PROJECT STRUCTURE
+# 2. CURRENT PROJECT STRUCTURE
 
-Yaklaşık:
+Yaklaşık yapı:
 
 ```text
 mystake-collector/
 ├── docs/
-│   ├── handoff/
-│   └── product/
 ├── mystake/
 │   ├── events/
 │   │   ├── mapper.py
@@ -231,7 +132,7 @@ mystake-collector/
 └── uv.lock
 ```
 
-Rule:
+Layer rule:
 
 ```text
 sources/
@@ -246,7 +147,7 @@ events/
 
 ---
 
-# 6. MQTT — PROVEN
+# 3. MQTT — PROVEN
 
 WebSocket:
 
@@ -289,7 +190,7 @@ Wildcard:
 live/gamenew/#
 ```
 
-rejected with:
+rejected:
 
 ```text
 SUBACK 0x80
@@ -303,11 +204,11 @@ live/gamenew/{GameId}
 
 ---
 
-# 7. CACHE INDIRECTION — PROVEN
+# 4. CACHE INDIRECTION — PROVEN
 
-MQTT PUBLISH çoğu zaman actual payload taşımıyor.
+MQTT PUBLISH çoğu zaman actual JSON taşımıyor.
 
-Observed pattern:
+Observed flow:
 
 ```text
 MQTT PUBLISH
@@ -318,15 +219,21 @@ MQTT PUBLISH
 → JSON decode
 ```
 
-Bu implemented ve proven.
+Implemented and proven.
 
 ---
 
-# 8. LIVE SIDE — PROVEN
+# 5. LIVE SIDE — PROVEN
+
+Live exact topic:
+
+```text
+live/gamenew/{GameId}
+```
 
 Live snapshot/diff çalışıyor.
 
-Football match end için güçlü pattern:
+Football match-end için güçlü observed pattern:
 
 ```text
 Status == 3
@@ -346,7 +253,7 @@ subscribe
 
 ---
 
-# 9. PREMATCH MQTT TOPICS — PROVEN
+# 6. PREMATCH MQTT TOPICS — PROVEN
 
 Global topics:
 
@@ -356,13 +263,13 @@ prematch/games
 prematch/markets
 ```
 
-Hepsi gerçek MQTT trafiğinde doğrulandı.
+Gerçek MQTT trafiğinde doğrulandı.
 
 GameId-specific prematch MQTT topic bulunmadı.
 
 ---
 
-# 10. PREMATCH/GAMES
+# 7. PREMATCH/GAMES — WHAT WE KNOW
 
 Cache example:
 
@@ -384,7 +291,7 @@ Payload shape:
 }
 ```
 
-Important:
+Critical:
 
 ```text
 prematch/games
@@ -392,23 +299,47 @@ IS NOT
 the complete fixture universe
 ```
 
-Strongest interpretation:
+Strongest model:
 
 ```text
 prematch/games
-=
-global change / invalidation / revalidation stream
+≈ global/broad invalidation/revalidation stream
 ```
 
-Exact duplicate notifications occur.
+Important:
 
-`DeleteList` exact semantics are still NOT proven.
+```text
+UpdateList entry
+≠ guaranteed underlying state change
+```
 
-Do not automatically delete local state solely because a GameId appears in DeleteList until semantics are proven.
+Observed repeatedly:
+
+```text
+prematch/games says GameId X changed
+→ browser gamefull fetches X
+→ fetched state can be identical to previous state
+```
+
+So better semantics:
+
+```text
+GameId X should be revalidated/refreshed
+```
+
+rather than:
+
+```text
+GameId X definitely changed
+```
+
+Exact `DeleteList` semantics still UNKNOWN.
+
+Do NOT automatically treat DeleteList as permanent fixture deletion until proven.
 
 ---
 
-# 11. PREMATCH/MARKETS
+# 8. PREMATCH/MARKETS
 
 Topic:
 
@@ -416,7 +347,7 @@ Topic:
 prematch/markets
 ```
 
-Observed cache payloads decoded into timestamp/version-like values such as:
+Decoded payloads looked like timestamp/version markers:
 
 ```text
 1789978503
@@ -436,27 +367,33 @@ prematch/markets
 → timestamp/version/invalidation marker
 ```
 
-It does NOT appear to carry actual market state.
+It does not appear to carry actual market state.
 
 Exact semantics unresolved.
 
 ---
 
-# 12. PREMATCH HTTP ENDPOINTS
+# 9. PREMATCH HTTP ENDPOINTS
 
-Full snapshot:
-
-```text
-/api/prematch/getprematchgamefull/28/{GameId}
-```
-
-Actual host:
+Host:
 
 ```text
 https://analytics-sp.googleserv.tech
 ```
 
-Current context ID:
+Authoritative full snapshot:
+
+```text
+/api/prematch/getprematchgamefull/28/{GameId}
+```
+
+Partial endpoint:
+
+```text
+/api/prematch/getprematchgameall/{LANGUAGE}/28/?games=,{GAME_IDS}
+```
+
+Context ID:
 
 ```text
 28
@@ -468,19 +405,11 @@ Important:
 28 is NOT sport ID
 ```
 
-Exact meaning unresolved.
-
-Partial endpoint:
-
-```text
-/api/prematch/getprematchgameall/{LANGUAGE}/28/?games=,{GAME_IDS}
-```
-
-Supports batching.
+Exact meaning UNKNOWN.
 
 ---
 
-# 13. GAMEFULL — AUTHORITATIVE
+# 10. GAMEFULL — AUTHORITATIVE
 
 Outer structure resembles:
 
@@ -499,19 +428,19 @@ outer = response.json()
 game = json.loads(outer["game"])
 ```
 
-Real comparisons strongly establish:
+Strongly proven:
 
 ```text
 gamefull
 =
-full authoritative state snapshot
+authoritative full state snapshot
 ```
 
 ---
 
-# 14. GAMEALL — PARTIAL
+# 11. GAMEALL — PARTIAL
 
-Real fixture comparison previously showed approximately:
+Real comparison:
 
 ```text
 gameall:
@@ -540,21 +469,18 @@ Therefore:
 
 ```text
 gameall = partial representation
-gamefull = authoritative full snapshot
+gamefull = authoritative snapshot
 ```
 
 ---
 
-# 15. GAMEALL IS NOT A COMPLETE LOGICAL DELTA
+# 12. GAMEALL IS NOT A COMPLETE LOGICAL DELTA
 
-Earlier assumption:
+Earlier merge assumption:
 
 ```text
-market absent
-→ unchanged
-
-market present
-→ replace market
+market absent → unchanged
+market present → replace market
 ```
 
 was disproven.
@@ -573,7 +499,7 @@ market missing from gameall
 ≠ unchanged
 ```
 
-Selection identity can change while selection count remains the same.
+Selection identity can change while selection count stays the same.
 
 Therefore:
 
@@ -586,52 +512,50 @@ NOT authoritative snapshot
 NOT complete logical delta
 ```
 
-Do not spend more time trying to reverse engineer perfect `gameall` merge semantics yet.
+Do NOT spend more time trying to derive perfect merge semantics yet.
 
 ---
 
-# 16. PC CHECK
+# 13. PC CHECK
 
-Observed strong relation:
+Observed relation:
 
 ```text
 gamefull.pc
 ≈ total selection count
 ```
 
-Collector implemented:
+Collector currently can do:
 
 ```text
 local selection count != pc
 → gamefull resync
 ```
 
-This detected real divergence.
+This detects some corruption.
 
-However:
+But:
 
 ```text
 pc match
 ≠ exact state correctness
 ```
 
-Same-count authoritative divergence was observed.
-
-For example:
+Observed authoritative divergence with:
 
 ```text
 same pc
-same number of selections
+same selection count
 different odds/state
 ```
 
-Therefore `pc` can detect some corruption but cannot prove exact equality.
+So `pc` is only a sanity check.
 
 ---
 
-# 17. RECONCILIATION EXPERIMENT
+# 14. RECONCILIATION EXPERIMENT
 
-Experimental setting:
+Experimental:
 
 ```python
 RECONCILE_EVERY_GAME_MERGES = 10
@@ -650,7 +574,7 @@ every N merges
 → gamefull reconciliation
 ```
 
-10-minute soak result:
+10-minute soak:
 
 ```text
 checks  = 11
@@ -664,138 +588,76 @@ Approximately:
 90.9% repair rate
 ```
 
-Meaning partial gameall merging does NOT maintain authoritative state.
+Conclusion:
 
-Do NOT solve by simply changing:
+```text
+gameall partial merging does NOT maintain authoritative state
+```
+
+Do NOT solve this by:
 
 ```text
 10 → 5 → 1
 ```
 
-because that degenerates into blind full polling.
+because that just becomes blind full polling.
 
-This result triggered frontend/browser reverse engineering.
+This result triggered browser reverse engineering.
 
 ---
 
-# 18. IMPORTANT DETAIL-PAGE HAR
+# 15. PREMATCH/GAMES → GAMEFULL — VERY STRONG
 
-Important GameId:
-
-```text
-76433701
-```
-
-URL:
+Detail-page experiments showed:
 
 ```text
-https://mystake.com/en/sportsbook/prematch/match/76433701
-```
-
-Observed repeatedly:
-
-```text
-prematch/games contains 76433701
+prematch/games contains GameId X
 → shortly afterwards
-getprematchgamefull/28/76433701
+→ getprematchgamefull/28/X
 ```
 
-Example:
+Example for `76433701`:
 
 ```text
-20:55:05.979
-prematch/games
-
-20:55:06.540
-gamefull
-
+20:55:05.979 prematch/games
+20:55:06.540 gamefull
 ≈561 ms
 ```
 
 Another:
 
 ```text
-20:55:00.245
-prematch/games
-
-20:55:00.528
-gamefull
-
+20:55:00.245 prematch/games
+20:55:00.528 gamefull
 ≈283 ms
 ```
 
-For GameId 76433701:
+For that GameId:
 
 ```text
 7 gamefull calls
-7/7 preceded by same-GameId prematch/games signal
+7/7 preceded by same-GameId prematch/games notification
 ```
+
+Across multiple HARs:
+
+```text
+prematch/games
+→ relevance decision
+→ gamefull
+```
+
+is VERY STRONG.
 
 ---
 
-# 19. INVALIDATION DISCOVERY
+# 16. BROWSER DOES NOT FETCH EVERY NOTIFIED GAMEID
 
-Two consecutive `gamefull` responses after notifications were completely identical:
-
-```text
-markets = 60 → 60
-pc      = 267 → 267
-mc      = 76 → 76
-up      = same
-vis     = same
-
-markets changed    = 0
-selections changed = 0
-coef changes       = 0
-lock changes       = 0
-```
-
-Therefore:
-
-```text
-prematch/games UpdateList
-≠ guaranteed state change
-```
-
-Better interpretation:
-
-```text
-prematch/games UpdateList entry
-≈
-"GameId X should be revalidated/refreshed"
-```
-
-Another later refresh after notification DID change state:
-
-```text
-55 markets changed
-194 selections changed
-194 coef changes
-```
-
-So notification can lead to:
-
-```text
-same authoritative state
-```
-
-or:
-
-```text
-new authoritative state
-```
-
-This is classic invalidation/revalidation-like behavior.
-
----
-
-# 20. FIRST GLOBAL HAR
-
-One earlier global HAR roughly showed:
+Earlier global HAR approximately:
 
 ```text
 prematch/games entries ≈ 5139
-distinct update GameIds ≈ 2006
+distinct notified GameIds ≈ 2006
 
 gamefull calls = 172
 distinct gamefull GameIds = 28
@@ -804,132 +666,37 @@ distinct gamefull GameIds = 28
 Therefore:
 
 ```text
-prematch/games
-=
-global stream
+prematch/games = global/broad stream
 ```
 
-Browser does NOT perform:
+Browser does NOT do:
 
 ```text
 every UpdateList GameId
 → gamefull
 ```
 
-Instead only a relevant/active subset gets refreshed.
-
-Same-GameId correlation:
+Instead:
 
 ```text
-≤0.5 sec → 88
-≤1.0 sec → 153
-≤1.5 sec → 162
-≤2.0 sec → 164
-≤3.0 sec → 167
+UpdateList
+→ is GameId relevant/active for this client?
+→ if yes, gamefull
 ```
 
-Thus:
-
-```text
-164 / 172
-≈95.3%
-```
-
-were correlated within two seconds.
-
-Also:
-
-```text
-28 / 28
-```
-
-distinct fetched GameIds had at least one preceding same-GameId notification.
+This “relevant/active” decision was the main blocker for a while.
 
 ---
 
-# 21. CURRENT FRONTEND MODEL
+# 17. SPORT-TAB EXPERIMENTS
 
-Strongest evidence-based model:
-
-```text
-prematch/games
-        ↓
-global UpdateList
-        ↓
-frontend asks:
-"is this GameId relevant/active?"
-        ↓
-YES
-        ↓
-getprematchgamefull/28/{GameId}
-        ↓
-authoritative state refresh
-```
-
-Key unresolved problem:
-
-```text
-How does frontend define relevant/active GameIds?
-```
-
----
-
-# 22. OLD CH HYPOTHESIS
-
-Earlier some GameIds shared same:
-
-```text
-ch
-```
-
-Example:
-
-```text
-ch=38220:
-76365207
-76369418
-76433701
-76433705
-76462118
-```
-
-This suggested a competition/group relation.
-
-But exact semantics remain unresolved.
-
-Do NOT state:
-
-```text
-ch = competition ID
-```
-
-as proven.
-
-Safer terminology:
-
-```text
-group/competition-like identifier
-```
-
-A single-league experiment was considered, but weekday fixture availability made it inconvenient.
-
-Investigation moved to:
-
-```text
-/prematch/upcoming
-```
-
----
-
-# 23. UPCOMING PAGE
-
-URL:
+Route:
 
 ```text
 https://mystake.com/en/sportsbook/prematch/upcoming
 ```
 
-Contains tabs such as:
+Contains tabs like:
 
 ```text
 Soccer
@@ -938,242 +705,277 @@ Tennis
 ...
 ```
 
-Selecting another sport does NOT change the URL.
+Selecting different sport does not change route.
 
-Likely selected sport is frontend/client state.
-
-This is expected and useful because it isolates:
+Initial hypothesis:
 
 ```text
-same route
-different selected tab
+selected sport
+→ controls relevant GameId set
 ```
+
+This was tested.
 
 ---
 
-# 24. FIVE IMPORTANT SOCCER FIXTURES
+# 18. FIRST SEQUENTIAL SOCCER/BASKETBALL EXPERIMENT
 
-Previously selected test fixtures:
+Previous sequential captures had ~13-minute gap, which introduced fixture lifecycle churn.
 
-```text
-76433706
-76433710
-76433712
-76433719
-76473552
-```
+Because of that, differences could not safely be attributed to selected sport.
 
-They appeared under Soccer around 22:00 local time.
-
-UI displayed something resembling:
+Important lesson:
 
 ```text
-Res.
+time progression
++
+fixture kickoff/expiry
 ```
 
-possibly reserves.
+was a major confound.
 
-Reserve status is irrelevant to current protocol analysis.
-
-Decoded data:
-
-```text
-GameId       sport   ch
-76433706     1       8015
-76433710     1       8015
-76433712     1       8015
-76433719     1       8015
-76473552     1       8015
-```
-
-Therefore these five clearly belong to the same:
-
-```text
-ch=8015
-```
-
-group.
+Therefore we performed simultaneous/parallel HAR capture.
 
 ---
 
-# 25. PREVIOUS SOCCER HAR
+# 19. PARALLEL HAR EXPERIMENT
 
-Previous `soccer.har`:
-
-```text
-Soccer selected
-Network cleared AFTER selecting Soccer
-Preserve Log ON
-~5 minutes observation
-no interaction
-```
-
-Results:
+Files:
 
 ```text
-HAR entries = 534
-
-prematch/games requests = 227
-decoded UpdateList entries = 890
-distinct prematch/games GameIds = 226
-
-gamefull calls = 103
-distinct gamefull GameIds = 30
-
-gameall calls = 0
+futbol.har
+basket.har
 ```
 
-Distinct GameIds by sport:
+Captured almost simultaneously.
+
+Common overlap:
 
 ```text
-sport=1 → 22
-sport=2 → 8
+272.17 sec
+≈ 4m 32s
 ```
 
-gamefull calls by sport:
-
-```text
-sport=1 → 74
-sport=2 → 29
-```
-
-Therefore:
-
-```text
-Soccer selected
-≠ only Soccer fixtures refreshed
-```
-
-This is PROVEN.
+This removed the previous 13-minute time confound.
 
 ---
 
-# 26. PREVIOUS SOCCER HAR TIMING CORRELATION
+# 20. PARALLEL HAR — NOTIFICATION UNIVERSE
 
-For all 103 gamefull requests:
-
-```text
-≤0.5 sec : 27
-≤1.0 sec : 70
-≤1.5 sec : 93
-≤2.0 sec : 97
-≤3.0 sec : 101
-≤5.0 sec : 103
-```
-
-Thus:
+Inside common overlap:
 
 ```text
-103 / 103
+Football-page notifications   = 141 distinct GameIds
+Basketball-page notifications = 138 distinct GameIds
+
+Shared                         = 131
+Football-only                  = 10
+Basketball-only                = 7
+
+Union                          = 148
+
+Jaccard                        = 88.51%
 ```
 
-had same-GameId `prematch/games` signal during previous 5 seconds.
+Exact `(GameId, UpdateTimeStamp)` comparison:
 
-Very strong evidence:
+```text
+Football exact notification keys   = 252
+Basketball exact notification keys = 236
+Shared exact keys                  = 196
+Jaccard                            = 67.12%
+```
+
+For shared exact notifications:
+
+```text
+median arrival difference = 0 ms
+p95                       = 5 ms
+max                       = 334 ms
+```
+
+Almost all arrived virtually simultaneously.
+
+Strong conclusion:
 
 ```text
 prematch/games
-→ relevance check
-→ gamefull
+=
+shared/global invalidation stream
+```
+
+Selected sport is NOT changing the underlying feed in any major way.
+
+---
+
+# 21. PARALLEL HAR — GAMEFULL SET
+
+Inside common overlap:
+
+```text
+Football selected   = 20 distinct gamefull GameIds
+Basketball selected = 11 distinct gamefull GameIds
+
+Shared               = 10
+Football-only        = 10
+Basketball-only      = 1
+
+Union                = 21
+
+Jaccard               = 47.62%
+```
+
+Shared IDs:
+
+```text
+76243885
+76295713
+76298554
+76298562
+76397499
+76397553
+76473350
+76473351
+76473352
+76473355
+```
+
+Football-only:
+
+```text
+73869181   sport=2   ch=657
+74463331   sport=1   ch=107509
+76011135   sport=1   ch=1091
+76084213   sport=1   ch=583
+76243887   sport=2   ch=5779
+76397545   sport=2   ch=108287
+76397548   sport=2   ch=108287
+76442441   sport=1   ch=5068
+76473274   sport=1   ch=97089
+76473276   sport=1   ch=97089
+```
+
+Composition:
+
+```text
+6 Soccer
+4 Basketball
+```
+
+Basketball-only:
+
+```text
+76485396   sport=1   ch=69553
+```
+
+Important:
+
+```text
+Basketball-selected page's only exclusive GameId was Soccer.
 ```
 
 ---
 
-# 27. FIVE TEST FIXTURES IN PREVIOUS SOCCER HAR
+# 22. SAME NOTIFICATION / DIFFERENT FETCH DECISION
 
-Previous counts:
+Among GameIds notified in BOTH sessions:
 
 ```text
-76433706 → 3 gamefull calls
-76433710 → 6
-76433712 → 4
-76433719 → 3
-76473552 → 3
+Neither fetched           = 110
+Both fetched               = 10
+Football-only fetched      = 10
+Basketball-only fetched     = 1
 ```
 
-Approx notification→gamefull latency:
+This is critical.
+
+We directly observed:
 
 ```text
-76433706 : 0.243–1.109 sec
-76433710 : 0.243–1.469 sec
-76433712 : 0.243–1.109 sec
-76433719 : 0.243–1.110 sec
-76473552 : 0.244–1.111 sec
+same GameId
++
+same prematch/games notification seen in BOTH browsers
++
+one browser calls gamefull
++
+other browser does not
 ```
 
----
+Therefore a client-local relevance/state decision definitely exists.
 
-# 28. PREVIOUS SOCCER HAR CH RESULT
+However the asymmetric fetches did NOT align cleanly with selected sport.
 
-Soccer-selected capture did NOT only fetch `ch=8015`.
-
-Multiple `ch` groups appeared, including:
+Football-only:
 
 ```text
-107509
-1091
-114549
-12431
-30408
-38220
-5068
-57632
-583
-58945
-69525
-8015
-97089
-...
+6 sport=1
+4 sport=2
+```
+
+Basketball-only:
+
+```text
+1 sport=1
+0 sport=2
 ```
 
 Therefore simple model:
 
 ```text
-one current competition
-→ only one ch group refreshed
+selected sport
+→ corresponding sport relevance filter
 ```
 
-does NOT fit `/prematch/upcoming`.
-
-The relevant universe is broader.
+does NOT fit the evidence.
 
 ---
 
-# 29. GAMEALL REALTIME OBSERVATION
+# 23. SPORT-TAB CONCLUSION
 
-First global HAR:
+Strong conclusion:
 
 ```text
-gamefull = 172
-gameall = 0
+selected sport
+≠ primary/exclusive data-subscription selector
 ```
 
-Previous Soccer HAR:
+Strong relevance filter hypothesis does not fit.
+
+Best current classification:
 
 ```text
-gamefull = 103
-gameall = 0
+selected sport tab
+≈ mostly presentation/rendering state
 ```
 
-Previous Basketball HAR:
+Possible small/partial network influence is not fully excluded.
+
+Do NOT claim:
 
 ```text
-gamefull = 138
-gameall = 0
+selected sport has absolutely zero effect
 ```
 
-Across these captures:
+because local fetch sets still differed.
+
+But selected sport is clearly NOT the mechanism that defines all relevant fixtures.
+
+---
+
+# 24. GAMEALL OBSERVATION ACROSS REALTIME HARS
+
+Across many realtime HAR captures:
 
 ```text
-413 observed gamefull requests
-0 observed gameall requests
+gamefull observed hundreds of times
+gameall observed 0 times in realtime refresh chains
 ```
 
 Correct interpretation:
 
 ```text
-gameall was NOT observed as part of
-the realtime prematch invalidation refresh chain
+gameall was NOT observed as part of realtime
+prematch/games → refresh chain
 ```
 
 Do NOT claim:
@@ -1182,1683 +984,435 @@ Do NOT claim:
 browser never uses gameall
 ```
 
-It may still be used for bootstrap/list/another flow.
+because latest Sports bootstrap HAR finally showed where `gameall` is used.
 
-But realtime evidence strongly favors:
-
-```text
-prematch/games
-→ gamefull
-```
-
-rather than:
-
-```text
-prematch/games
-→ gameall
-```
+See below.
 
 ---
 
-# 30. PREVIOUS SOCCER VS BASKETBALL EXPERIMENT
+# 25. NAVIGATION OBSERVED
 
-An experiment was performed with:
+Important routes:
 
-```text
-soccer.har
-basketball.har
-```
-
-However they were NOT recorded simultaneously.
-
-Soccer capture:
+Initial:
 
 ```text
-Soccer selected
-~5 minute observation
+mystake.com
 ```
 
-Basketball capture:
+Press `Sports`:
 
 ```text
-Basketball selected
-~5 minute observation
+https://mystake.com/sportsbook/prematch
 ```
 
-The Basketball capture started approximately 13 minutes after the Soccer capture.
+Press `Upcoming`:
 
-This turned out to be an important confounding variable.
+```text
+https://mystake.com/en/sportsbook/prematch/upcoming
+```
+
+Press `Live`:
+
+```text
+https://mystake.com/en/sportsbook/live/eventview/{GameId}
+```
+
+Example:
+
+```text
+https://mystake.com/en/sportsbook/live/eventview/76432070
+```
+
+Press `Sports` again later:
+
+```text
+https://mystake.com/en/sportsbook/prematch/top
+```
+
+Therefore prematch has multiple views/routes, at least:
+
+```text
+/prematch/top
+/prematch/upcoming
+```
+
+and possibly route/state-specific subsets.
 
 ---
 
-# 31. PREVIOUS TWO-HAR SUMMARY
+# 26. CRITICAL NEW DISCOVERY — SPORTS.HAR
 
-Previous HAR comparison:
-
-```text
-                         Soccer        Basketball
---------------------------------------------------
-HAR entries              534           486
-Duration                  5m25s         4m55s
-prematch/games            227           171
-UpdateList entries        890           605
-distinct notified IDs     226           186
-gamefull calls            103           138
-distinct gamefull IDs     30            36
-gameall calls             0             0
-sport=1 distinct          22            30
-sport=2 distinct          8             6
-sport=1 calls             74            121
-sport=2 calls             29            17
-distinct ch               18            18
-```
-
-Important surprise:
+Latest file:
 
 ```text
-Soccer selected:
-sport=1 → 22 distinct
-sport=2 → 8 distinct
-
-Basketball selected:
-sport=1 → 30 distinct
-sport=2 → 6 distinct
+sports.har
 ```
 
-Therefore Basketball selection did NOT lead to obvious increased Basketball subscription.
+Capture scenario:
 
-In fact Soccer became MORE dominant in the later capture.
+```text
+Open mystake.com
+→ press Sports
+→ browser goes to /sportsbook/prematch
+```
+
+This HAR produced the most important recent discovery.
 
 ---
 
-# 32. PREVIOUS GAMEID SET COMPARISON
+# 27. GETHEADER — LIKELY FULL PREMATCH DISCOVERY ENDPOINT
 
-Define:
-
-```text
-A = previous soccer.har distinct gamefull GameIds
-B = previous basketball.har distinct gamefull GameIds
-```
-
-Results:
+On initial Sports load, browser calls:
 
 ```text
-|A| = 30
-|B| = 36
-
-|A ∩ B| = 24
-
-A - B = 6
-B - A = 12
-
-|A ∪ B| = 42
+GET https://analytics-sp.googleserv.tech/api/sport/getheader/en
 ```
 
-Jaccard:
+Response size:
 
 ```text
-24 / 42
-= 57.14%
+~746 KB
 ```
 
-So there was a large common relevant core.
+Response contains hierarchical fixture discovery data approximately:
+
+```text
+EN
+└── Sports
+    ├── Soccer
+    │   └── Regions
+    │       └── Champs
+    │           └── GameSmallItems
+    │               ├── GameId
+    │               ├── Sport
+    │               ├── Region
+    │               ├── Champ
+    │               ├── StartTime
+    │               ├── t1
+    │               └── t2
+    │
+    ├── Basketball
+    ├── Tennis
+    ├── Baseball
+    ├── Ice Hockey
+    ├── Handball
+    ├── Formula 1
+    └── many others
+```
+
+This is the first endpoint found that appears to expose the large prematch fixture universe.
 
 ---
 
-# 33. PREVIOUS SHARED 24 GAMEIDS
+# 28. GETHEADER SPORTS / FIXTURE COUNTS
+
+Latest analysis found approximately:
 
 ```text
-73869181
-74463331
-76011135
-76084213
-76243887
-76262444
-76295713
-76298554
-76298562
-76365661
-76396622
-76433706
-76433710
-76433712
-76433719
-76442441
-76447231
-76473274
-76473276
-76473350
-76473351
-76473352
-76473355
-76473552
+37 different sports
+3503 prematch GameIds
 ```
 
-Important:
-
-All five `ch=8015` Soccer test fixtures remained active in the Basketball capture:
+Example counts:
 
 ```text
-76433706
-76433710
-76433712
-76433719
-76473552
+Soccer             1166
+Ice Hockey          492
+Basketball          432
+Tennis              381
+American Football   375
+Baseball              98
+Rugby                 70
+Formula 1             63
+Table Tennis          57
+Handball              37
+MMA                   29
+Cricket               24
+Volleyball            16
+others                ...
 ```
 
-This proves:
+Total:
 
 ```text
-Basketball selected
-≠ stop refreshing Soccer fixtures
+3503 GameIds
 ```
+
+This directly answers a major previous concern:
+
+Collector must NOT be designed only around Soccer/Basketball.
+
+MyStake includes:
+
+```text
+Soccer
+Basketball
+Tennis
+Baseball
+Ice Hockey
+Handball
+Formula 1
+American Football
+Rugby
+Table Tennis
+MMA
+Cricket
+Volleyball
+...
+```
+
+The likely discovery endpoint already covers them in one hierarchy.
 
 ---
 
-# 34. PREVIOUS SOCCER-ONLY GAMEIDS
+# 29. CURRENT STRONG HYPOTHESIS — GETHEADER SEMANTICS
+
+Current strongest model:
 
 ```text
-76207230   sport=2
-76243885   sport=2
-76397517   sport=2
-76397549   sport=2
-76432070   sport=1
-76433699   sport=1
-```
-
-Interesting:
-
-```text
-4 / 6 disappearing fixtures were Basketball
-```
-
-Thus switching to Basketball certainly did NOT simply retain/add every Basketball fixture.
-
----
-
-# 35. PREVIOUS BASKETBALL-ONLY GAMEIDS
-
-```text
-73869178   sport=2
-75946238   sport=1
-76340642   sport=1
-76396675   sport=1
-76396700   sport=1
-76432071   sport=1
-76447096   sport=1
-76447116   sport=1
-76447163   sport=1
-76447198   sport=1
-76447298   sport=1
-76483288   sport=2
-```
-
-Composition:
-
-```text
-10 Soccer
-2 Basketball
-```
-
-Again, this does NOT look like:
-
-```text
-select Basketball
-→ subscribe primarily to Basketball
-```
-
----
-
-# 36. PREVIOUS SPORT=1 SET COMPARISON
-
-Soccer fixtures:
-
-```text
-Soccer HAR     = 22
-Basketball HAR = 30
-
-shared  = 20
-removed = 2
-added   = 10
-
-Jaccard = 20 / 32
-        = 62.5%
-```
-
-Removed:
-
-```text
-76432070
-76433699
-```
-
-Added:
-
-```text
-75946238
-76340642
-76396675
-76396700
-76432071
-76447096
-76447116
-76447163
-76447198
-76447298
-```
-
-Thus Basketball tab did NOT reduce Soccer representation.
-
-Observed Soccer distinct fixtures actually increased:
-
-```text
-22 → 30
-```
-
----
-
-# 37. PREVIOUS SPORT=2 SET COMPARISON
-
-Basketball fixtures:
-
-```text
-Soccer HAR     = 8
-Basketball HAR = 6
-
-shared  = 4
-removed = 4
-added   = 2
-
-Jaccard = 4 / 10
-        = 40%
-```
-
-Shared:
-
-```text
-73869181
-76243887
-76298554
-76298562
-```
-
-Removed:
-
-```text
-76207230
-76243885
-76397517
-76397549
-```
-
-Added:
-
-```text
-73869178
-76483288
-```
-
-So the 8 Basketball GameIds seen with Soccer selected did NOT all remain when Basketball was selected.
-
-Only:
-
-```text
-4 / 8
-```
-
-continued.
-
----
-
-# 38. PREVIOUS CH DISTRIBUTION
-
-Both HARs:
-
-```text
-18 distinct ch
-```
-
-Shared `ch` values:
-
-```text
-583
-657
-1091
-5068
-5779
-8015
-38220
-46061
-57632
-58945
-69525
-97089
-107509
-114549
-```
-
-Therefore:
-
-```text
-14 / 18 ch groups shared
-```
-
-Soccer-only:
-
-```text
-12431
-30408
-108287
-113921
-```
-
-Basketball-only:
-
-```text
-5092
-20189
-57637
-104276
-```
-
-Again this looked like:
-
-```text
-large shared page-level core
-+
-some churn
-```
-
-rather than two entirely independent sport datasets.
-
----
-
-# 39. PREVIOUS BASKETBALL TIMING CORRELATION
-
-Basketball HAR:
-
-```text
-138 gamefull calls
-```
-
-Correlation buckets:
-
-```text
-≤0.5 sec : 30
-≤1.0 sec : 75
-≤1.5 sec : 82
-≤2.0 sec : 82
-≤3.0 sec : 82
-≤5.0 sec : 133
-```
-
-The remaining five also had an earlier same-GameId notification.
-
-Maximum observed delay roughly:
-
-```text
-7.6 sec
-```
-
-Therefore:
-
-```text
-138 / 138
-```
-
-had a preceding same-GameId `prematch/games` notification in the capture.
-
-This independently reinforced the invalidation model.
-
----
-
-# 40. FETCH BURSTS — IMPORTANT
-
-Do NOT assume:
-
-```text
-1 UpdateList occurrence
+getheader/en
 =
-exactly 1 gamefull request
+full or near-full prematch discovery tree
 ```
+
+Conceptually:
+
+```text
+Sport
+→ Region
+→ Champ
+→ GameSmallItems
+→ GameId
+```
+
+This may be the missing bootstrap/discovery mechanism that we were searching for.
+
+Do NOT yet label it 100% “all fixtures forever” until additional validation is performed.
+
+But evidence is very strong.
+
+---
+
+# 30. PREMATCH/HEADER → GETHEADER RELATION
+
+This is another major discovery.
+
+In `sports.har`:
+
+Initial:
+
+```text
+GET /api/sport/getheader/en
+```
+
+Response contained:
+
+```text
+3503 GameIds
+```
+
+Then approximately ~1.6 seconds later:
+
+```text
+prematch/header
+```
+
+notification arrived.
+
+Frontend then called:
+
+```text
+GET /api/sport/getheader/en
+```
+
+again.
+
+Second response contained:
+
+```text
+3502 GameIds
+```
+
+Difference:
+
+```text
+one GameId disappeared
+```
+
+Observed disappearing GameId:
+
+```text
+76470869
+sport = Tennis
+start ≈ 2026-09-21T19:58:00
+```
+
+This likely coincided with fixture lifecycle transition/removal.
+
+Therefore current strong hypothesis:
+
+```text
+prematch/header
+      ↓
+invalidate fixture/header universe
+      ↓
+GET /api/sport/getheader/en
+      ↓
+refresh discovery tree
+```
+
+This is potentially the exact meaning of `prematch/header`.
+
+This needs one focused confirmation experiment before calling it fully PROVEN.
+
+---
+
+# 31. GETPREMATCHTOPGAMES — DIFFERENT PURPOSE
+
+In Sports bootstrap HAR browser also calls:
+
+```text
+/api/prematch/getprematchtopgames/en
+```
+
+This does NOT appear to be the full fixture universe.
 
 Observed:
 
 ```text
-one prematch/games occurrence
-→ several gamefull calls for same GameId
+~83 GameIds
 ```
 
-Previous Soccer HAR had burst groups reaching approximately:
+Example distribution:
 
 ```text
-6 gamefull requests
+Sumo         8
+Baseball    14
+Soccer      16
+Ice Hockey   8
+Tennis      13
+MMA          5
+Basketball  13
+Formula 1    6
 ```
 
-Previous Basketball HAR approximately:
+Strong interpretation:
 
 ```text
-7 gamefull requests
+getprematchtopgames
+=
+Top page/display subset
 ```
 
-So semantics are closer to:
+not:
 
 ```text
-notification/revalidation trigger
-→ frontend scheduling/refetch logic
-→ one or more authoritative fetches
+global prematch discovery
 ```
-
-Do NOT model notification/fetch as strict 1:1.
 
 ---
 
-# 41. CRITICAL CONFOUND IN PREVIOUS EXPERIMENT
+# 32. GAMEALL FINALLY HAS A PLAUSIBLE BROWSER ROLE
 
-Previous captures were sequential.
-
-Approximately:
+Immediately after Top/bootstrap data, browser called something like:
 
 ```text
-Soccer HAR:
-18:39:44 UTC
-→ 18:45:09 UTC
-
-Basketball HAR:
-18:58:46 UTC
-→ 19:03:41 UTC
+getprematchgameall/en/28/?games=,...
 ```
 
-There was roughly:
+with a batch of GameIds.
+
+Example observed batch contained around:
 
 ```text
-13 minutes
+16 Soccer GameIds
 ```
 
-between them.
+This finally explains why `gameall` existed but was absent in realtime HARs.
 
-During those 13 minutes fixture lifecycle naturally changed.
-
-Examples of Soccer-only fixtures:
+Strong model:
 
 ```text
-76397517  start ~18:40
-76397549  start ~18:40
-
-76432070  start ~18:45
-76433699  start ~18:45
+BOOTSTRAP / LIST RENDERING
+→ getheader / getprematchtopgames
+→ choose visible/list GameIds
+→ getprematchgameall batch
+→ render partial list cards
 ```
 
-These had already reached/passed kickoff by the later Basketball capture.
-
-New Basketball-HAR Soccer fixtures included several with around:
+while realtime update path appears to be:
 
 ```text
-19:00
-```
-
-kickoff:
-
-```text
-76396675
-76396700
-76447096
-76447163
-76447198
-76447298
+REALTIME
+prematch/games
+→ relevant GameId
+→ getprematchgamefull
+→ authoritative state refresh
 ```
 
 Therefore:
 
 ```text
-A - B
-and
-B - A
+gameall
 ```
 
-could NOT safely be attributed to selected sport.
+is likely a bootstrap/list-card representation endpoint rather than the authoritative realtime update mechanism.
 
-A large part may simply have been:
-
-```text
-time progression
-+
-fixture lifecycle churn
-```
-
-This is exactly why the NEXT experiment uses parallel capture.
+This is a major conceptual clarification.
 
 ---
 
-# 42. CURRENT CONCLUSIONS BEFORE PARALLEL EXPERIMENT
+# 33. CURRENT BEST END-TO-END PREMATCH MODEL
 
-## PROVEN
+Current strongest architecture model:
 
 ```text
-prematch/games is a broad/global stream.
+STARTUP
+   ↓
+GET /api/sport/getheader/en
+   ↓
+discover Sport / Region / Champ / GameId universe
+   ↓
+optional route-specific subset:
+getprematchtopgames
+   ↓
+getprematchgameall batch
+   ↓
+render prematch lists
 ```
 
-```text
-Browser does NOT fetch every notified GameId.
-```
+Then realtime:
 
 ```text
-For relevant GameIds, same-GameId prematch/games
-strongly precedes gamefull.
-```
-
-```text
-gamefull is the authoritative snapshot.
-```
-
-```text
-gameall is partial.
-```
-
-```text
-gameall is NOT a complete logical delta.
-```
-
-```text
-pc equality does NOT guarantee exact state equality.
-```
-
-```text
-Soccer selected does NOT mean only Soccer fixtures
-are refreshed.
-```
-
-```text
-Basketball selected does NOT prevent Soccer fixtures
-from being refreshed.
-```
-
-```text
-The five ch=8015 Soccer fixtures continued refreshing
-with Basketball selected.
-```
-
-```text
-gameall has not been observed in the current
-realtime prematch invalidation→refresh chain.
-```
-
----
-
-# 43. STRONG EVIDENCE BEFORE PARALLEL TEST
-
-Current best-fitting model:
-
-```text
-/prematch/upcoming
-        ↓
-broad page-level relevant GameId universe
-        ↓
-selected sport may be mostly presentation state
-or may have only partial influence
-        ↓
-prematch/games global invalidation stream
-        ↓
-frontend checks whether GameId is relevant
-        ↓
+prematch/games
+   ↓
+GameId invalidation
+   ↓
+is GameId relevant/active locally?
+   ↓
+YES
+   ↓
 getprematchgamefull
-        ↓
-authoritative state refresh
+   ↓
+replace with authoritative state
 ```
 
-Strong evidence currently says:
+Fixture-universe changes:
 
 ```text
-selected sport is NOT the primary/exclusive
-data-subscription selector
+prematch/header
+   ↓
+getheader/en
+   ↓
+refresh fixture discovery tree
 ```
 
-However:
-
-```text
-selected sport has ZERO influence
-```
-
-is NOT proven yet.
-
-That is precisely what the parallel HAR experiment must test.
+This is currently the best evidence-based model.
 
 ---
 
-# 44. STILL UNKNOWN
-
-Do NOT claim these yet:
-
-```text
-selected sport has no network/data effect at all
-```
-
-```text
-ch is exactly competition ID
-```
-
-```text
-gameall is never used
-```
-
-```text
-every notification causes a gamefull
-```
-
-```text
-browser relevance algorithm should be copied
-1:1 into collector
-```
-
-```text
-DeleteList means immediately delete fixture
-```
-
-```text
-28 is sport ID
-```
-
-All remain unresolved or disproven assumptions.
-
----
-
-# 45. IMPORTANT BROWSER VS COLLECTOR DISTINCTION
-
-Browser's objective:
-
-```text
-refresh whatever the current UI needs
-```
-
-Collector's objective:
-
-```text
-collect complete fixture lifecycle
-possibly broader than a single page's visible data
-```
-
-Therefore even once browser relevance semantics are understood:
-
-```text
-browser relevant set
-≠ necessarily collector relevant set
-```
-
-But browser remains our protocol reference for:
-
-```text
-what prematch/games means
-
-what endpoint to call after invalidation
-
-how revalidation works
-
-how frontend chooses whether a notification matters
-```
-
----
-
-# 46. NEXT EXPERIMENT — PARALLEL HAR CAPTURE
-
-THIS IS THE NEXT IMMEDIATE TASK.
-
-Two browser windows/tabs will be recorded **at the same time**.
-
-One:
-
-```text
-/prematch/upcoming
-Soccer selected
-```
-
-Other:
-
-```text
-/prematch/upcoming
-Basketball selected
-```
-
-Files:
-
-```text
-soccer.har
-basketball.har
-```
-
-These new filenames REPLACE the previous files for the next analysis.
-
-Treat filenames as experiment labels:
-
-```text
-soccer.har
-=
-parallel capture with Soccer selected
-
-basketball.har
-=
-parallel capture with Basketball selected
-```
-
----
-
-# 47. PARALLEL CAPTURE PROCEDURE
-
-Desired setup:
-
-## Window A
-
-```text
-Open /prematch/upcoming
-Select Soccer
-Open DevTools → Network
-Preserve Log ON
-Clear Network
-```
-
-## Window B
-
-```text
-Open /prematch/upcoming
-Select Basketball
-Open DevTools → Network
-Preserve Log ON
-Clear Network
-```
-
-Then start both captures as close together as practically possible.
-
-Do not interact with either page.
-
-Observe approximately:
-
-```text
-5 minutes
-```
-
-Export:
-
-```text
-Window A → soccer.har
-Window B → basketball.har
-```
-
-Most important point:
-
-```text
-captures must overlap almost completely in wall-clock time
-```
-
-This removes the previous experiment's biggest confound.
-
----
-
-# 48. NEW CHAT — FIRST ANALYSIS OF PARALLEL FILES
-
-When user uploads the NEW two HARs:
-
-```text
-soccer.har
-basketball.har
-```
-
-analyze them programmatically from scratch.
-
-Do NOT rely only on previous counts.
-
-For EACH HAR calculate:
-
-```text
-total HAR entries
-
-capture start timestamp
-capture end timestamp
-duration
-
-overlap window between HARs
-
-prematch/games request count
-
-decoded UpdateList entry count
-
-distinct notified GameIds
-
-gamefull request count
-
-distinct gamefull GameIds
-
-gameall request count
-
-distinct gameall GameIds if present
-```
-
-The overlap period is especially important.
-
----
-
-# 49. VERY IMPORTANT — COMPARE ONLY COMMON TIME WINDOW WHEN POSSIBLE
-
-Because one browser capture may start a few seconds earlier or stop a few seconds later:
-
-Determine:
-
-```text
-overlap_start = max(soccer_start, basketball_start)
-
-overlap_end = min(soccer_end, basketball_end)
-```
-
-Primary comparison should ideally use:
-
-```text
-only requests/events inside overlap_start → overlap_end
-```
-
-Also optionally show whole-file metrics separately.
-
-This prevents start/stop timing artifacts.
-
----
-
-# 50. EXTRACT GAMEFULL METADATA
-
-For each distinct gamefull GameId determine where possible:
-
-```text
-GameId
-sport
-ch
-up
-pc
-mc
-kickoff/start timestamp
-fixture/team names
-number of gamefull calls
-first fetch timestamp
-last fetch timestamp
-```
-
-Do this independently for both HARs.
-
----
-
-# 51. MAIN PARALLEL SET COMPARISON
-
-Define using the COMMON OVERLAP WINDOW:
-
-```text
-A = Soccer selected distinct gamefull GameIds
-B = Basketball selected distinct gamefull GameIds
-```
-
-Calculate exactly:
-
-```text
-|A|
-|B|
-
-|A ∩ B|
-
-|A - B|
-
-|B - A|
-
-|A ∪ B|
-```
-
-Then:
-
-```text
-Jaccard(A,B)
-=
-|A ∩ B| / |A ∪ B|
-```
-
-Show exact percentage.
-
-List:
-
-```text
-Shared GameIds
-Soccer-only GameIds
-Basketball-only GameIds
-```
-
-Include metadata for difference IDs:
-
-```text
-sport
-ch
-kickoff
-fixture name if available
-```
-
----
-
-# 52. THIS TIME DIFFERENCE SETS ARE MUCH MORE IMPORTANT
-
-Because captures are simultaneous:
-
-```text
-A - B
-```
-
-is much stronger evidence for:
-
-```text
-GameIds relevant with Soccer selected
-but not Basketball selected
-```
-
-and:
-
-```text
-B - A
-```
-
-is much stronger evidence for:
-
-```text
-GameIds relevant with Basketball selected
-but not Soccer selected
-```
-
-Unlike previous sequential capture, fixture time progression should no longer explain most differences.
-
-Still check for request randomness/race effects before declaring deterministic behavior.
-
----
-
-# 53. COMPARE PREMATCH/GAMES INPUT STREAM ITSELF
-
-This is CRITICAL in the parallel experiment.
-
-Compare decoded notification universes:
-
-```text
-N_soccer
-=
-distinct GameIds appearing in soccer.har prematch/games
-
-N_basketball
-=
-distinct GameIds appearing in basketball.har prematch/games
-```
-
-Calculate:
-
-```text
-intersection
-Soccer-only
-Basketball-only
-Jaccard
-```
-
-Also compare notification occurrence timestamps for shared GameIds.
-
-Question:
-
-```text
-Are both pages receiving essentially the same
-prematch/games global invalidation stream?
-```
-
-If yes, this gives us an excellent controlled experiment:
-
-```text
-same global notification input
-+
-different selected tab
-→ compare gamefull output
-```
-
-That is much stronger than comparing only gamefull sets.
-
----
-
-# 54. NOTIFICATION → FETCH DECISION MATRIX
-
-For each GameId notified during the overlapping observation window, classify:
-
-```text
-notified in Soccer HAR?
-notified in Basketball HAR?
-
-gamefull fetched in Soccer HAR?
-gamefull fetched in Basketball HAR?
-
-sport
-ch
-```
-
-Useful conceptual table:
-
-```text
-GameId    Notify S   Notify B   Fetch S   Fetch B   sport   ch
-----------------------------------------------------------------
-X         yes        yes        yes       yes
-Y         yes        yes        yes       no
-Z         yes        yes        no        yes
-...
-```
-
-The MOST valuable GameIds are:
-
-```text
-same notification seen by BOTH pages
-but gamefull fetched by only ONE page
-```
-
-Those would be direct evidence that some page/client relevance state changes the decision after receiving the same global invalidation.
-
-Then inspect whether the asymmetric fetch aligns with:
-
-```text
-selected sport
-```
-
-or something else.
-
----
-
-# 55. SELECTED-SPORT CAUSAL TEST
-
-Specifically inspect shared notifications where:
-
-```text
-same GameId notified in both browser sessions
-```
-
-For `sport=1`:
-
-Question:
-
-```text
-Does Soccer-selected page fetch the GameId
-while Basketball-selected page ignores it?
-```
-
-For `sport=2`:
-
-Question:
-
-```text
-Does Basketball-selected page fetch the GameId
-while Soccer-selected page ignores it?
-```
-
-If a strong directional pattern appears, selected tab materially influences relevance.
-
-If fetch decisions are nearly identical regardless of sport, selected tab is mostly presentation/UI state.
-
-This is the core purpose of the experiment.
-
----
-
-# 56. SPORT DISTRIBUTION
-
-For each HAR calculate:
-
-```text
-distinct gamefull GameIds by sport
-```
-
-and:
-
-```text
-gamefull request count by sport
-```
-
-Then specifically compare:
-
-```text
-Soccer selected:
-sport=1
-sport=2
-
-Basketball selected:
-sport=1
-sport=2
-```
-
-Important:
-
-Do NOT rely only on percentages.
-
-Compare exact GameIds.
-
----
-
-# 57. SPORT-SPECIFIC SET COMPARISON
-
-Calculate:
-
-```text
-Soccer HAR sport=1 set
-vs
-Basketball HAR sport=1 set
-```
-
-Show:
-
-```text
-shared
-Soccer-page-only
-Basketball-page-only
-Jaccard
-```
-
-Then:
-
-```text
-Soccer HAR sport=2 set
-vs
-Basketball HAR sport=2 set
-```
-
-Show the same metrics.
-
-This directly tests whether selected sport changes the corresponding sport subset.
-
----
-
-# 58. CH DISTRIBUTION
-
-For both HARs calculate:
-
-```text
-ch → distinct GameId count
-ch → gamefull request count
-```
-
-Compare:
-
-```text
-shared ch
-Soccer-only ch
-Basketball-only ch
-```
-
-Questions:
-
-```text
-Do selected sport tabs introduce distinct ch groups?
-
-Do exactly the same ch groups remain active?
-
-Are differences concentrated in one sport?
-
-Does ch appear more related to fixture grouping than tab selection?
-```
-
-Do not assign exact semantic meaning to `ch` without sufficient evidence.
-
----
-
-# 59. PREMATCH/GAMES → GAMEFULL CORRELATION
-
-For every `gamefull` request:
-
-Find the latest prior decoded:
-
-```text
-prematch/games UpdateList
-```
-
-entry for SAME GameId in the SAME HAR.
-
-Calculate:
-
-```text
-gamefull timestamp
--
-notification timestamp
-```
-
-Generate buckets:
-
-```text
-≤0.5 sec
-≤1 sec
-≤1.5 sec
-≤2 sec
-≤3 sec
-≤5 sec
->5 sec
-```
-
-Do separately for Soccer and Basketball.
-
-Previous benchmark:
-
-Soccer:
-
-```text
-103 / 103 within 5 sec
-```
-
-Previous Basketball:
-
-```text
-133 / 138 within 5 sec
-138 / 138 had an earlier notification
-```
-
-Check whether parallel runs reproduce the relationship.
-
----
-
-# 60. CROSS-BROWSER NOTIFICATION TIMING
-
-Because sessions run simultaneously, compare timestamps of same notification GameIds between HARs.
-
-Question:
-
-```text
-Do both clients receive prematch/games changes
-at approximately the same time?
-```
-
-If yes, that further supports:
-
-```text
-prematch/games = shared/global invalidation feed
-```
-
-Potentially calculate same-GameId occurrence differences such as:
-
-```text
-median timestamp difference
-p95 difference
-```
-
-when practical.
-
----
-
-# 61. FETCH BURSTS
-
-Detect cases:
-
-```text
-one notification
-→ multiple same-GameId gamefull requests
-```
-
-Record:
-
-```text
-maximum burst size
-examples
-burst duration
-```
-
-Compare whether Soccer and Basketball sessions behave similarly.
-
-Do NOT force 1 notification = 1 fetch semantics.
-
----
-
-# 62. REQUEST CADENCE
-
-Normalize for overlap duration:
-
-```text
-prematch/games requests/minute
-gamefull requests/minute
-distinct fetched GameIds/minute
-```
-
-Compare both browsers.
-
-Since captures are simultaneous, large cadence differences may themselves be useful.
-
----
-
-# 63. GAMEFULL RESPONSE STATE COMPARISON ACROSS BROWSERS
-
-For GameIds fetched by BOTH browsers around similar times, compare authoritative snapshots where practical.
-
-At minimum inspect:
-
-```text
-up
-pc
-mc
-market count
-selection count
-```
-
-Question:
-
-```text
-Do both sessions receive identical authoritative state
-for the same GameId at roughly the same time?
-```
-
-Expected answer should probably be yes, but verify.
-
-This also helps distinguish:
-
-```text
-different relevance decision
-```
-
-from:
-
-```text
-different underlying data source/state
-```
-
----
-
-# 64. FIVE ch=8015 SOCCER FIXTURES
-
-If still present during the new capture, explicitly check:
-
-```text
-76433706
-76433710
-76433712
-76433719
-76473552
-```
-
-However they may have already started/ended by the time of the next experiment.
-
-If absent due lifecycle timing, do NOT treat absence as tab evidence.
-
-Use whatever active shared fixtures exist at the time of the parallel test.
-
----
-
-# 65. PARALLEL EXPERIMENT — POSSIBLE OUTCOME A
-
-If:
-
-```text
-notification streams nearly identical
-AND
-gamefull GameId sets nearly identical
-AND
-high Jaccard
-AND
-sport-specific sets nearly identical
-```
-
-then strong evidence:
-
-```text
-selected sport tab is mostly a presentation/UI filter
-```
-
-Potential model:
-
-```text
-/upcoming page owns broad active dataset
-selected tab mostly controls rendering/filtering
-```
-
-Still avoid claiming literally zero influence unless evidence supports that.
-
----
-
-# 66. POSSIBLE OUTCOME B
-
-If:
-
-```text
-same notification stream
-BUT
-
-many sport=1 IDs fetched only in Soccer session
-AND
-many sport=2 IDs fetched only in Basketball session
-```
-
-then:
-
-```text
-selected sport materially influences
-the frontend relevance filter
-```
-
-Likely model:
-
-```text
-shared global invalidation stream
-+
-client-local sport relevance filtering
-+
-gamefull only for relevant IDs
-```
-
-This would be a major protocol/frontend discovery.
-
----
-
-# 67. POSSIBLE OUTCOME C
-
-If:
-
-```text
-large common gamefull core
-+
-meaningful sport-specific differences
-```
-
-then likely model:
-
-```text
-shared page-level core
-+
-selected-tab-specific relevant subset
-```
-
-Quantify:
-
-```text
-core percentage
-sport-specific delta percentage
-```
-
-This may be the most likely nuanced model.
-
----
-
-# 68. POSSIBLE OUTCOME D
-
-If notification streams themselves differ substantially between the simultaneous sessions:
-
-Do NOT immediately conclude tab filtering happens after notification.
-
-Instead investigate possibility that:
-
-```text
-subscription/session state changes prematch/games feed itself
-```
-
-or:
-
-```text
-cache request/notification scheduling differs
-```
-
-This would be unexpected given current global-stream evidence, but must be measured rather than assumed.
-
----
-
-# 69. REQUIRED ANSWERS AFTER NEW PARALLEL ANALYSIS
-
-Explicitly answer:
-
-```text
-1. How much wall-clock overlap did the HARs have?
-
-2. Did both sessions receive essentially the same
-   prematch/games notification universe?
-
-3. What is the notification-set Jaccard?
-
-4. What is the gamefull relevant-set Jaccard?
-
-5. Which GameIds were fetched by both?
-
-6. Which were Soccer-session-only?
-
-7. Which were Basketball-session-only?
-
-8. For asymmetric GameIds, was the SAME notification
-   seen in both browser sessions?
-
-9. Are asymmetric fetches correlated with sport=1 / sport=2?
-
-10. Does Soccer selection increase sport=1 relevance?
-
-11. Does Basketball selection increase sport=2 relevance?
-
-12. Are Soccer fixtures still refreshed in Basketball session?
-
-13. Are Basketball fixtures still refreshed in Soccer session?
-
-14. How does ch distribution differ?
-
-15. Does prematch/games → gamefull correlation remain?
-
-16. Does gameall remain absent?
-
-17. Is the selected tab best classified as:
-    - presentation/UI filter
-    - partial relevance influence
-    - strong relevance/subscription filter
-```
-
-Do not answer #17 impressionistically.
-
-Base it on the quantitative comparison.
-
----
-
-# 70. EXPECTED OUTPUT FORMAT AFTER NEW HAR ANALYSIS
-
-Start with a compact table:
-
-```text
-                              Soccer       Basketball
-------------------------------------------------------
-Capture start                 ...
-Capture end                   ...
-Duration                      ...
-Common overlap                ...
-
-HAR entries                   ...
-prematch/games requests       ...
-UpdateList entries            ...
-distinct notified GameIds     ...
-gamefull calls                ...
-distinct gamefull GameIds     ...
-gameall calls                 ...
-
-sport=1 distinct              ...
-sport=2 distinct              ...
-sport=1 calls                 ...
-sport=2 calls                 ...
-distinct ch                   ...
-```
-
-Then:
-
-## Notification universe
-
-```text
-Soccer notifications      = X
-Basketball notifications  = Y
-Shared                    = Z
-Soccer-only               = ...
-Basketball-only           = ...
-Jaccard                   = ...%
-```
-
-Then:
-
-## Gamefull relevant universe
-
-```text
-Soccer GameIds      = X
-Basketball GameIds  = Y
-Shared              = Z
-Soccer-only         = ...
-Basketball-only     = ...
-Jaccard             = ...%
-```
-
-Then exact asymmetric IDs.
-
-Then:
-
-## Same notification / different fetch decisions
-
-This should receive special emphasis.
-
-Then:
-
-## Sport-specific comparison
-
-Then:
-
-## ch comparison
-
-Then:
-
-## notification→gamefull timing
-
-Then:
-
-## PROVEN FROM PARALLEL HARS
-
-## STRONG EVIDENCE
-
-## STILL UNKNOWN
-
-Finally recommend at most:
-
-```text
-ONE next experiment
-```
-
-and only if another experiment is actually needed.
-
----
-
-# 71. VERY IMPORTANT ANALYTICAL PRINCIPLE FOR NEXT CHAT
-
-The strongest evidence in the new parallel experiment will NOT simply be:
-
-```text
-GameId appears in Soccer HAR
-but not Basketball HAR
-```
-
-The strongest case is:
-
-```text
-same GameId
-+
-same prematch/games invalidation observed in BOTH sessions
-+
-Soccer browser does gamefull
-+
-Basketball browser does NOT
-
-or vice versa
-```
-
-That directly isolates the frontend's relevance decision.
-
-This is the central analysis target.
-
----
-
-# 72. CURRENT LIKELY COLLECTOR ARCHITECTURE SHIFT
+# 34. POSSIBLE CORRECT COLLECTOR DESIGN
 
 Current collector roughly does:
 
@@ -2870,173 +1424,701 @@ prematch/games
 → periodic gamefull reconciliation
 ```
 
-Browser evidence increasingly looks like:
+Evidence increasingly says this is the wrong architecture.
+
+Potential replacement:
+
+```text
+STARTUP
+
+getheader/en
+   ↓
+discover all prematch GameIds
+   ↓
+maintain local fixture registry
+```
+
+Then subscribe:
+
+```text
+prematch/header
+prematch/games
+prematch/markets
+```
+
+On:
+
+```text
+prematch/header
+```
+
+potentially:
+
+```text
+GET getheader/en
+→ compare old/new discovery tree
+→ detect additions/removals/metadata changes
+```
+
+On:
 
 ```text
 prematch/games
-→ check relevant GameId
-→ gamefull
-→ replace with authoritative state
 ```
 
-This may eventually justify a major collector redesign.
-
-BUT:
+for known/relevant GameIds:
 
 ```text
-DO NOT CHANGE IT YET
+GET gamefull
+→ authoritative replace
 ```
 
-First complete parallel sport-tab experiment.
+Potential startup market loading strategy still needs design.
 
-Then determine what GameId universe the collector itself should maintain.
+Do NOT implement this redesign yet until the remaining protocol questions below are validated.
 
 ---
 
-# 73. LARGER UNRESOLVED COLLECTOR DESIGN QUESTION
+# 35. IMPORTANT BROWSER VS COLLECTOR DISTINCTION
 
-Even if browser relevance rule becomes known:
-
-Collector needs potentially broader coverage.
-
-Ultimate question:
+Browser objective:
 
 ```text
-How should a headless collector discover and maintain
-the full prematch fixture universe?
+load/render current page
 ```
 
-Possible future investigation areas:
+Collector objective:
 
 ```text
-bootstrap/list endpoints
+maintain complete fixture lifecycle across all supported sports
+```
+
+Therefore:
+
+```text
+browser visible/relevant set
+≠ collector relevant set
+```
+
+Collector may intentionally track a much larger universe than browser page rendering.
+
+This is why sport-tab filtering is no longer the main issue.
+
+---
+
+# 36. CURRENTLY SOLVED VS UNSOLVED
+
+## PROVEN / VERY STRONG
+
+```text
+MQTT transport works
+cache indirection works
+live exact GameId topics work
+live diff works
+match-end handling works
+```
+
+```text
+prematch/header exists
+prematch/games exists
+prematch/markets exists
+```
+
+```text
+gamefull = authoritative snapshot
+gameall = partial representation
+gameall != complete logical delta
+pc equality != exact-state equality
+```
+
+```text
+prematch/games = broad/global invalidation stream
+```
+
+```text
+relevant same-GameId prematch/games
+strongly precedes gamefull
+```
+
+```text
+browser does NOT gamefull every notified GameId
+```
+
+```text
+selected Soccer does NOT mean only Soccer fixtures
+```
+
+```text
+selected Basketball does NOT mean only Basketball fixtures
+```
+
+```text
+selected sport is NOT primary/exclusive data-subscription selector
+```
+
+```text
+getheader/en exposes a huge multi-sport prematch fixture tree
+```
+
+```text
+getprematchtopgames is a much smaller route/display subset
+```
+
+```text
+gameall is observed during bootstrap/list rendering
+```
+
+```text
+gameall is NOT observed in realtime prematch/games refresh chain
+```
+
+---
+
+# 37. STRONG HYPOTHESES
+
+```text
+getheader/en
+=
+main prematch fixture discovery/bootstrap endpoint
+```
+
+```text
 prematch/header
-page/category discovery
-competition grouping
-fixture expiration
-kickoff transition
-prematch → live mapping
+→ invalidates getheader data
+→ browser refetches getheader
 ```
 
-But NONE of these should distract from the current parallel experiment.
-
----
-
-# 74. CURRENT KNOWLEDGE MATRIX
+```text
+getprematchtopgames
+=
+Top page subset
+```
 
 ```text
-MQTT connection                             ✅ PROVEN
-reconnect/resubscribe                       ✅ PROVEN
-unsubscribe                                 ✅ PROVEN
-cache indirection                           ✅ PROVEN
+gameall
+=
+list/bootstrap detail representation
+```
 
-live exact GameId topic                     ✅ PROVEN
-live diff                                   ✅ PROVEN
-match-end handling                          ✅ PROVEN
-
-prematch/header                             ✅ PROVEN
-prematch/games                              ✅ PROVEN
-prematch/markets                            ✅ PROVEN
-
-gamefull endpoint                           ✅ PROVEN
-gameall endpoint                            ✅ PROVEN
-
-gamefull authoritative                      ✅ PROVEN
-gameall partial                             ✅ PROVEN
-
-gameall complete logical delta              ❌ DISPROVEN
-missing gameall market = unchanged          ❌ DISPROVEN
-pc equality = exact-state equality          ❌ DISPROVEN
-
-prematch/games global/broad stream          ✅ VERY STRONG
-
-prematch/games → same-ID gamefull           ✅ VERY STRONG
-
-all notification IDs → gamefull             ❌ FALSE
-
-selected Soccer → only Soccer refresh       ❌ DISPROVEN
-
-selected Basketball → no Soccer refresh     ❌ DISPROVEN
-
-selected sport primary exclusive selector   ❌ DOES NOT FIT EVIDENCE
-
-selected sport zero influence               ❓ UNKNOWN
-
-selected sport partial influence            ❓ CURRENT EXPERIMENT
-
-ch exact semantics                          ❓ UNKNOWN
-
-DeleteList exact semantics                  ❓ UNKNOWN
-
-context ID 28 exact semantics               ❓ UNKNOWN
-
-gameall role outside realtime chain         ❓ UNKNOWN
-
-collector full relevant universe            ❓ UNKNOWN
+```text
+gamefull
+=
+realtime authoritative replacement
 ```
 
 ---
 
-# 75. MOST IMPORTANT CURRENT QUESTION
+# 38. STILL UNKNOWN
 
-Do not get distracted by implementation.
-
-Right now answer:
+Do NOT claim these as proven yet:
 
 ```text
-When two /prematch/upcoming browser sessions run
-at the SAME TIME,
-
-one with Soccer selected
-and one with Basketball selected,
-
-do they receive the same prematch/games invalidations
-but make different gamefull fetch decisions?
+getheader/en is literally 100% of every possible prematch fixture
 ```
-
-And if yes:
 
 ```text
-Are those different decisions systematically explained
-by the selected sport?
+prematch/header always means "refetch getheader"
 ```
 
-That is the purpose of the two NEW HAR files.
+```text
+DeleteList exact semantics
+```
+
+```text
+ch exact semantic meaning
+```
+
+```text
+28 exact semantic meaning
+```
+
+```text
+prematch/markets exact semantics
+```
+
+```text
+how prematch fixture transitions to live GameId/topic
+```
+
+```text
+whether prematch GameId stays the same when moving live
+```
+
+```text
+what exact collector relevance policy should be
+```
+
+```text
+whether all 3500+ fixtures should immediately receive gamefull at startup
+```
+
+Important:
+
+Do NOT blindly call `gamefull` for all ~3500 fixtures before designing load/update strategy.
 
 ---
 
-# 76. NEW CHAT OPENING INSTRUCTION
+# 39. NEXT IMMEDIATE TASK — MOST IMPORTANT
 
-After this handoff is pasted, the user will upload:
+Do NOT go back to Soccer-vs-Basketball tab experiments.
 
-```text
-soccer.har
-basketball.har
-```
-
-They are simultaneous/parallel captures.
-
-Do not ask the user what to do.
-
-Do not ask them to upload again if attached.
-
-Do not modify the collector.
-
-Immediately analyze both files.
-
-Primary objective:
+The next experiment should validate:
 
 ```text
-compare SAME-TIME notification input
-against SAME-TIME gamefull fetch output
+prematch/header
+→ getheader/en
 ```
 
-and determine whether:
+relationship.
+
+Goal:
+
+Prove whether `prematch/header` is the fixture-universe invalidation signal.
+
+Suggested controlled experiment:
 
 ```text
-selected sport
+1. Open Sports / prematch.
+2. Network + MQTT logging active.
+3. Capture prematch/header notifications.
+4. For every prematch/header notification:
+   record exact timestamp.
+5. Check whether browser calls:
+   /api/sport/getheader/en
+6. Measure notification → getheader latency.
+7. Compare consecutive getheader responses.
+8. Determine:
+   added GameIds
+   removed GameIds
+   changed fixture metadata
 ```
 
-actually participates in frontend GameId relevance filtering.
+Important output:
 
-This parallel experiment is more important than the previous sequential Soccer/Basketball comparison because it removes fixture lifecycle/time progression as the major confound.
+```text
+header notification timestamp
+getheader request timestamp
+latency
+previous fixture count
+new fixture count
+added IDs
+removed IDs
+```
+
+If repeated consistently, classify:
+
+```text
+prematch/header
+→ getheader revalidation
+```
+
+as PROVEN.
+
+---
+
+# 40. AFTER THAT — NEXT EXPERIMENT
+
+Once `prematch/header → getheader` is proven, investigate:
+
+```text
+getheader lifecycle semantics
+```
+
+Questions:
+
+```text
+Does getheader include fixtures days into the future?
+
+Does it include all sports currently shown by MyStake?
+
+Does a fixture disappear at kickoff?
+
+Does it disappear before kickoff?
+
+Does it remain when transitioning to live?
+
+Does its GameId remain the same in live/eventview?
+
+Are new GameIds added through getheader refresh?
+```
+
+This is essential for collector fixture lifecycle.
+
+---
+
+# 41. IMPORTANT PREMATCH → LIVE QUESTION
+
+Live route observed:
+
+```text
+/en/sportsbook/live/eventview/{GameId}
+```
+
+Example:
+
+```text
+76432070
+```
+
+Live MQTT:
+
+```text
+live/gamenew/{GameId}
+```
+
+Need to determine:
+
+```text
+prematch GameId
+→ kickoff
+→ live GameId
+```
+
+Questions:
+
+```text
+same ID?
+new ID?
+mapping endpoint?
+header metadata?
+another MQTT topic?
+```
+
+This is one of the next major lifecycle questions after discovery is confirmed.
+
+---
+
+# 42. POTENTIAL COLLECTOR ARCHITECTURE AFTER VALIDATION
+
+Possible final design:
+
+```text
+BOOTSTRAP
+   ↓
+getheader
+   ↓
+FixtureRegistry
+   ↓
+GameId + Sport + Region + Champ + StartTime + teams
+```
+
+Subscriptions:
+
+```text
+prematch/header
+prematch/games
+prematch/markets
+```
+
+Handlers:
+
+```text
+prematch/header
+→ refresh getheader
+→ diff registry
+→ fixture added / removed / metadata changed
+```
+
+```text
+prematch/games
+→ if GameId in tracked registry
+→ fetch gamefull
+→ authoritative state replace
+```
+
+```text
+prematch/markets
+→ semantics TBD
+```
+
+At kickoff:
+
+```text
+prematch fixture
+→ live transition detection
+→ subscribe live/gamenew/{GameId}
+```
+
+At end:
+
+```text
+MATCH_ENDED
+→ final state
+→ cleanup
+```
+
+This architecture is NOT yet to be implemented until discovery/header semantics and prematch→live transition are validated.
+
+---
+
+# 43. IMPORTANT PERFORMANCE QUESTION
+
+`getheader` currently exposes roughly:
+
+```text
+3500+ fixtures
+```
+
+Do NOT assume collector should immediately:
+
+```text
+3500 × gamefull
+```
+
+That could create unnecessary load.
+
+Need later design for:
+
+```text
+initial full market hydration
+vs
+lazy hydration
+vs
+time-window tracking
+vs
+only fixtures with active markets
+vs
+staged loading
+```
+
+But solve protocol semantics first.
+
+---
+
+# 44. CURRENT MENTAL MODEL
+
+The system currently appears to have TWO separate data planes:
+
+## Discovery / Navigation Plane
+
+```text
+getheader
+getprematchtopgames
+gameall
+```
+
+Purpose:
+
+```text
+what fixtures exist?
+how are they grouped?
+what should list UI render?
+```
+
+## Realtime Authoritative Plane
+
+```text
+prematch/games
+→ gamefull
+```
+
+Purpose:
+
+```text
+this known GameId needs revalidation
+→ fetch authoritative state
+```
+
+And likely:
+
+```text
+prematch/header
+→ invalidate discovery plane
+```
+
+This separation is one of the biggest findings so far.
+
+---
+
+# 45. DO NOT REGRESS TO OLD ASSUMPTIONS
+
+Do NOT go back to:
+
+```text
+prematch/games is fixture discovery
+```
+
+It is not.
+
+Do NOT go back to:
+
+```text
+gameall is realtime delta
+```
+
+Evidence says no.
+
+Do NOT assume:
+
+```text
+selected sport determines subscription universe
+```
+
+Parallel experiment says no.
+
+Do NOT assume:
+
+```text
+pc match means local state correct
+```
+
+Disproven.
+
+Do NOT assume:
+
+```text
+one notification = one fetch
+```
+
+Disproven.
+
+Do NOT assume:
+
+```text
+DeleteList = immediate permanent delete
+```
+
+Unknown.
+
+---
+
+# 46. CURRENT HIGHEST PRIORITY QUESTIONS
+
+In order:
+
+```text
+1. Prove prematch/header → getheader revalidation.
+```
+
+```text
+2. Understand getheader lifecycle:
+   additions / removals / kickoff behavior.
+```
+
+```text
+3. Determine prematch → live GameId transition.
+```
+
+```text
+4. Decide how collector should hydrate initial market state
+   without calling gamefull for thousands blindly.
+```
+
+```text
+5. Only then redesign collector around authoritative snapshots.
+```
+
+---
+
+# 47. MOST IMPORTANT RECENT FILES / EXPERIMENTS
+
+Recent HARs:
+
+```text
+futbol.har
+basket.har
+sports.har
+```
+
+Meaning:
+
+```text
+futbol.har
+→ /prematch/upcoming
+→ Soccer selected
+→ parallel experiment
+```
+
+```text
+basket.har
+→ /prematch/upcoming
+→ Basketball selected
+→ parallel experiment
+```
+
+```text
+sports.har
+→ mystake.com
+→ Sports click
+→ /sportsbook/prematch
+→ initial bootstrap/discovery
+```
+
+`sports.har` is currently the most important HAR because it revealed:
+
+```text
+/api/sport/getheader/en
+```
+
+and:
+
+```text
+/api/prematch/getprematchtopgames/en
+```
+
+plus bootstrap `gameall` behavior.
+
+---
+
+# 48. FIRST ACTION IN NEW CHAT
+
+When continuing:
+
+Do NOT ask what the project is.
+
+Do NOT restart Soccer/Basketball experiments.
+
+Do NOT propose architecture refactor immediately.
+
+Continue from:
+
+```text
+getheader/en discovered
++
+prematch/header likely invalidates getheader
+```
+
+First task:
+
+```text
+design or analyze a controlled
+prematch/header → getheader experiment
+```
+
+If user uploads a new HAR/log:
+
+Analyze it programmatically and specifically extract:
+
+```text
+prematch/header notification timestamps
+getheader request timestamps
+notification → request latency
+getheader fixture counts
+added GameIds
+removed GameIds
+changed metadata
+```
+
+Then classify result:
+
+```text
+PROVEN
+STRONG EVIDENCE
+UNKNOWN
+```
+
+---
+
+# 49. ONE-SENTENCE CURRENT STATUS
+
+If you need to remember only one thing:
+
+```text
+We have largely solved prematch realtime refresh
+(prematch/games → relevant GameId → authoritative gamefull),
+and sports.har has now revealed the likely missing discovery layer:
+getheader/en exposes ~3500 fixtures across ~37 sports,
+while prematch/header appears to trigger getheader revalidation.
+The immediate next goal is to prove that relationship and then
+understand fixture lifecycle / prematch→live transition.
+```
