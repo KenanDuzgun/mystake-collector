@@ -2122,3 +2122,4 @@ while prematch/header appears to trigger getheader revalidation.
 The immediate next goal is to prove that relationship and then
 understand fixture lifecycle / prematch→live transition.
 ```
+    
