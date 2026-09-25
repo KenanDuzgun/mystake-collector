@@ -808,7 +808,6 @@ interaction is otherwise unit-tested only, see
 - `live/gamenew/{GameId}`'s `gmk[].pn`/`h`/`pid`/`posn`, and `mk[]`'s
   `IsHandicap`/`IsOverUnder`/`ColumnCount`/`Category`/`cs`/`N`/
   `LinkID`/`LinkIDs`/`IsDefaultResultMarket`/`hasdesc` (see section 3).
-- Prematch -> live GameId transition (same id vs. new id at kickoff).
 - `prematch/header` notification payload semantics — decoded but not
   interpreted; used only for byte/value-equality dedup (section 1b).
   **Resolved this session (Phase 2B, section 1b):**
@@ -837,3 +836,189 @@ list-keyed) `{"EN": {"Sports": {...}}}` hierarchy; `GameSmallItem`'s
 `live/headernew/en`'s `Games` entry field layout and its join against
 `Sports`/`Regions`/`Championats`/`Teams` by `ID`; `Sport`/`Region`/
 `Champ` parent-node `ID`/`Name` field names on `getheader/en`.
+
+**Resolved in a prior session (Phase 5A) and reconfirmed this session
+(Phase 5B)**: prematch -> live GameId transition. See section 5 below.
+
+## 5. Phase 5B — Automatic prematch-to-live tracking handoff
+
+IMPLEMENTED, UNIT-TESTED, and **REAL-NETWORK VERIFIED** this session:
+at least one complete automatic handoff (in fact three, concurrently)
+was observed end to end, with no manually supplied live GameId.
+
+### GameId identity across the transition — PROVEN
+
+Phase 5A (prior session, `observe_prematch_to_live.py`) first observed
+this against real fixtures GameId `76553416` and `76553419`: a MyStake
+fixture keeps the **exact same GameId** when it moves from prematch
+(`getheader/en`) discovery to live (`live/headernew/en`) discovery -
+no separate live GameId, no fuzzy matching needed. Phase 5B
+(`watch_prematch_to_live.py`, this session) independently reconfirmed
+this against three further real fixtures (see below), all matched
+purely by exact GameId equality. Market/selection id stability across
+the transition remains **NOT VERIFIED** (Phase 5A's `--deepen` one-shot
+comparison was not re-run this session); Phase 5B never assumes it -
+the live snapshot for a handed-off GameId is always obtained
+independently through the ordinary live MQTT/cache path, never copied
+or derived from the prematch snapshot.
+
+### Architecture — `mystake/pipeline/prematch_to_live_handoff.py`
+
+`PrematchToLiveHandoffCoordinator` composes existing, unmodified
+components (`PrematchFixtureDiscovery`, `LiveFixtureDiscovery`,
+`PrematchOddsTracker`, `LiveGameRegistry`, `LiveOddsDispatcher`,
+`MystakeMqttClient`) around a small per-GameId state machine:
+
+```text
+PREMATCH_TRACKING
+    -> (same GameId observed in live/headernew/en discovery)
+LIVE_HANDED_OFF
+    -> (GameId subsequently absent from getheader/en discovery)
+PREMATCH_CLEANED_UP
+```
+
+One bounded `tick()` call: refresh `getheader/en` and revalidate
+prematch odds for every not-yet-cleaned-up candidate; refresh
+`live/headernew/en`; for every still-`PREMATCH_TRACKING` candidate now
+present (exact GameId match) in the live fixture set, attempt handoff
+(subscribe `live/gamenew/{GameId}`, wait for a real SUBACK, then
+`LiveGameRegistry.add_game`); for every `LIVE_HANDED_OFF` candidate no
+longer present in prematch discovery, mark it `PREMATCH_CLEANED_UP`
+(stops further prematch hydration for it; live tracking is untouched).
+
+Two small additions were needed to compose these unmodified
+components, not a new registry/transport:
+
+- `LiveGameRegistry.add_game(game_id)` (`mystake/registry/
+  live_game_registry.py`) lets a GameId join an already-running
+  registry with fresh, independent state - idempotent (a duplicate
+  call is a no-op, never resets existing state). Everything else about
+  a dynamically-added GameId (notification handling, diffing,
+  `MATCH_ENDED` lifecycle, reconciliation) is the pre-existing,
+  unmodified Phase 4B/4D code path.
+- `MystakeMqttClient` gained an `_io_lock` guarding every physical
+  `ws.recv()`/`ws.send_binary()` call (`mystake/sources/mqtt/client.py`).
+  The coordinator calls `subscribe()` from a background timer thread
+  the moment it detects a transition, while the main thread is
+  concurrently blocked inside `receive_publish()` on the same client -
+  the lock is held only for the duration of one physical socket call
+  (never across a whole `receive_publish()`/`subscribe()`), so neither
+  thread can starve the other indefinitely. **REAL-NETWORK VERIFIED**
+  this session: three concurrent SUBSCRIBE attempts from the
+  background tick thread all received real SUBACKs while the main
+  thread was simultaneously blocked in `receive_publish()` (observed
+  latency: up to ~25s, bounded by the main thread's in-flight
+  `ws.recv()` read-timeout window - see "Known limitation" below).
+
+### Executable — `watch_prematch_to_live.py`
+
+Ties the coordinator to real discovery/tracking: selects a bounded set
+of upcoming fixtures via `getheader/en`, tracks their prematch state,
+and dynamically subscribes to live tracking the moment each is
+observed live, cleaning up prematch tracking once each disappears from
+`getheader/en`. Configurable `--max-candidates`, `--observe-seconds`,
+`--tick-interval-seconds` (AGENTS.md section 4 - bounded, rate-limited,
+never unbounded fan-out).
+
+### REAL-NETWORK VERIFIED this session
+
+Command: `uv run python -u watch_prematch_to_live.py --sport Soccer
+--lookahead-minutes 5 --max-candidates 3 --observe-seconds 900
+--tick-interval-seconds 15`, run at `2026-09-25T15:59:26Z` (session
+local clock).
+
+Three real Soccer fixtures (Africa Cup Of Nations, Qualification,
+Group Stage; scheduled kickoff `2026-09-25T13:00:00`), all handed off
+automatically, no manually supplied live GameId:
+
+| GameId    | Live detected -> handed off | Prematch removed -> cleaned up | Notifications | Price changes | Live lifecycle at shutdown |
+|-----------|:---:|:---:|:---:|:---:|:---:|
+| 76367481  | same tick (t≈47.6s after start) | same tick (t≈90.9s) | 5 | 359 | ACTIVE |
+| 76514936  | same tick | same tick | 7 | 0 | ACTIVE |
+| 76591312  | same tick | same tick | 1 | 0 | ACTIVE |
+
+Evidence, in order:
+
+1. **SAME GAME ID**: all three GameIds appeared in a `live/headernew/en`
+   refresh (`Live registry refreshed added=8 removed=1
+   metadata_changed=0 unchanged=114`) while still present in the most
+   recent `getheader/en` refresh - a real, observed prematch/live
+   overlap (Phase 5A's ~29s finding reconfirmed, though this run's
+   overlap window was governed by the ~15s tick interval rather than
+   measured precisely).
+2. **LIVE DISCOVERY DETECTED** (log): `game_id=76367481/76514936/76591312
+   LIVE DISCOVERY DETECTED (same GameId as prematch candidate)`.
+3. **AUTOMATIC SUBSCRIBE + real SUBACK** (log): `Subscribing
+   topic=live/gamenew/76367481 ... packet_id=1` followed by `MQTT
+   subscription accepted topic=live/gamenew/76367481 packet_id=1`
+   (and identically for the other two GameIds, packet_id `2`/`3`).
+4. **INITIAL LIVE SNAPSHOT** (log): `game_id=76367481 INITIAL live
+   snapshot: score=0:0 time=None markets=62 selections=357` (78
+   markets/415 selections and 77/412 for the other two) - obtained
+   through the ordinary live cache-indirection path, never copied from
+   the prematch snapshot.
+5. **PREMATCH CLEANUP**: the next `getheader/en` refresh
+   (`removed=38`, all three GameIds among them - they had kicked off)
+   triggered `game_id=... PREMATCH CLEANUP complete (removed from
+   getheader/en; live tracking continues independently)` for all
+   three; each GameId's live lifecycle state stayed `ACTIVE` and kept
+   receiving real notifications afterwards, confirmed by the final
+   report (`Live lifecycle state: ACTIVE`, non-zero notification
+   counts after cleanup).
+6. **LIVE UPDATES CONTINUE**: GameId `76367481` received a real
+   `UPDATE price_changes=174 ...` shortly after handoff, then a further
+   real update with `match_changes=['MatchTime: None->0', "MatchTime
+   Extended: None->'0:00'", 'Status: 0->1', 'BetStatus: 0->1',
+   'EventStatus: 1->3', ...]` - the real kickoff transition, observed
+   live, entirely after the automatic handoff and prematch cleanup.
+
+**Duplicate prevention / idempotency - REAL-NETWORK VERIFIED**: each
+GameId shows `handoff_attempts=1` in the final report - the coordinator
+never re-subscribed a GameId once handed off, across the remaining
+real tick cycles before shutdown.
+
+**Per-game isolation - REAL-NETWORK VERIFIED**: all three GameIds'
+handoff, cleanup, and notification counts were independent (5/7/1
+notifications, 359/0/0 price changes) - one GameId's kickoff-time burst
+of updates did not affect the others' tracked state.
+
+**Shutdown - REAL-NETWORK VERIFIED**: `SIGINT` during active live
+tracking (all three GameIds still `ACTIVE`, mid-observation) triggered
+`request_shutdown()`, a clean `ListenerShutdown`-driven exit, WebSocket
+closed once, and no reconnect attempt - matching the existing
+Phase 4B/4D shutdown contract, exercised here with dynamically-added
+live GameIds in the registry.
+
+### Known limitation - subscribe latency while the main thread is idle-blocked
+
+Because `_io_lock` is scoped to one physical socket call, a background
+`subscribe()` attempt can only proceed once the main thread's current
+`ws.recv()` call returns. If the main thread is idle-blocked (no
+PUBLISH traffic), that call can run for up to its full read-timeout
+window (`MQTT_KEEP_ALIVE_SECONDS / 2` = 30s) before yielding the lock.
+Observed this session: an automatic handoff subscribe was issued at
+`16:00:04.593` and its SUBACK wasn't received/logged until
+`16:00:29.462` (~25s later) - well within the design's bounds (never
+unbounded, always eventually proceeds), but real, measured latency
+worth knowing about. Not a correctness issue (the transition is still
+detected and completed automatically, retried on the next tick if it
+somehow failed) - a caller wanting tighter subscribe latency under
+sparse live traffic would need a shorter `ws.settimeout` on the shared
+connection, which was not changed this session (out of scope - would
+affect keepalive/read-timeout behavior for every existing listener).
+
+### NOT VERIFIED this session (real network)
+
+- A failed/rejected SUBSCRIBE during a real handoff attempt (retry
+  path is unit-tested only - `tests/pipeline/
+  test_prematch_to_live_handoff.py::test_failed_subscribe_is_retryable_and_prematch_unaffected`).
+- A reconnect occurring mid-transition (between live detection and a
+  confirmed SUBACK) - real-network verified only for the ordinary
+  post-handoff reconnect/resubscribe path (pre-existing Phase 4B/4D
+  behavior, unchanged), not specifically interleaved with an in-flight
+  handoff attempt.
+- Market/selection id stability across the prematch -> live transition
+  (Phase 5A's `--deepen` comparison was not re-run this session).
+- A real `getprematchgamefull` empty/near-kickoff response for a
+  candidate mid-handoff (this session's candidates all returned
+  well-formed prematch snapshots on every tick up to cleanup).

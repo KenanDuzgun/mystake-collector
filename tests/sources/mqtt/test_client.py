@@ -571,3 +571,58 @@ def test_repeated_shutdown_requests_during_retry_backoff_are_safe(
         client.connect_with_retry()
 
     connect.assert_not_called()
+
+
+def test_io_lock_serializes_concurrent_send_and_recv() -> None:
+    """
+    Phase 5B: a background handoff-coordination thread may call
+    `subscribe()` (send + recv) while the main thread is inside
+    `receive_publish()` (recv) on the same client. `_ws_send`/
+    `_ws_recv` must serialize physical socket access via `_io_lock` so
+    the two threads' reads/writes are never interleaved mid-call.
+    """
+    import threading
+    import time as time_module
+
+    client = MystakeMqttClient()
+
+    events: list[str] = []
+    events_lock = threading.Lock()
+
+    class SlowWebSocket:
+        def recv(self):
+            with events_lock:
+                events.append("recv-start")
+            time_module.sleep(0.02)
+            with events_lock:
+                events.append("recv-end")
+            return b"\x00"
+
+        def send_binary(self, packet):
+            with events_lock:
+                events.append("send-start")
+            time_module.sleep(0.02)
+            with events_lock:
+                events.append("send-end")
+
+    ws = SlowWebSocket()
+
+    threads = [
+        threading.Thread(target=client._ws_recv, args=(ws,)),
+        threading.Thread(target=client._ws_send, args=(ws, b"\x00")),
+    ]
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert len(events) == 4
+    # each call's start/end must be adjacent - the lock never let the
+    # second thread's call begin before the first one's finished
+    assert events[0].endswith("start")
+    assert events[1].endswith("end")
+    assert events[0].split("-")[0] == events[1].split("-")[0]
+    assert events[2].endswith("start")
+    assert events[3].endswith("end")
+    assert events[2].split("-")[0] == events[3].split("-")[0]

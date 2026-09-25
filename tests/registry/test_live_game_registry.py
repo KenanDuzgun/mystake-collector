@@ -320,3 +320,50 @@ def test_reconcile_never_touches_finalized_game():
 
     assert result.newly_unknown == ()
     assert registry.get(1).lifecycle_state is LiveLifecycleState.TERMINAL
+
+
+def test_add_game_begins_tracking_new_game_id():
+    registry = LiveGameRegistry([1])
+
+    added = registry.add_game(2)
+
+    assert added is True
+    assert registry.tracked_game_ids() == (1, 2)
+    state = registry.get(2)
+    assert state is not None
+    assert state.snapshot is None
+    assert state.notification_count == 0
+    assert state.lifecycle_state is LiveLifecycleState.ACTIVE
+
+
+def test_add_game_is_idempotent_and_never_resets_existing_state():
+    registry = LiveGameRegistry([1])
+    registry.apply_notification(1, snapshot(1, score="1:0"))
+
+    added_again = registry.add_game(1)
+
+    assert added_again is False
+    assert registry.tracked_game_ids() == (1,)
+    assert registry.get(1).snapshot is not None
+    assert registry.get(1).notification_count == 1
+
+
+def test_dynamically_added_game_participates_in_full_lifecycle():
+    """
+    Phase 5B: a GameId added after construction (automatic
+    prematch-to-live handoff) must behave identically to one tracked
+    from the start - independent state, and the same terminal
+    lifecycle rules.
+    """
+    registry = LiveGameRegistry([1])
+    registry.add_game(2)
+
+    initial = registry.apply_notification(2, snapshot(2))
+    assert initial.is_initial is True
+
+    terminal_outcome = registry.apply_notification(2, terminal_snapshot(2))
+    assert terminal_outcome.became_terminal is True
+    assert registry.get(2).lifecycle_state is LiveLifecycleState.TERMINAL
+
+    # game 1 is entirely unaffected by game 2's lifecycle
+    assert registry.get(1).snapshot is None

@@ -144,6 +144,30 @@ class LiveGameRegistry:
     def tracked_game_ids(self) -> tuple[int | str, ...]:
         return self._tracked_game_ids
 
+    def add_game(self, game_id: int | str) -> bool:
+        """
+        Begins tracking a new GameId (Phase 5B automatic prematch-to-
+        live handoff - see `mystake.pipeline.prematch_to_live_handoff`).
+
+        Idempotent: returns `False` and leaves existing state untouched
+        if `game_id` is already tracked (a duplicate handoff attempt,
+        or a GameId this registry was already tracking, must never
+        reset an in-progress/finalized game's state), `True` if it was
+        newly added with fresh, empty state.
+        """
+        if game_id in self._state:
+            return False
+
+        self._tracked_game_ids = (*self._tracked_game_ids, game_id)
+        self._state[game_id] = LiveTrackedGameState(
+            game_id=game_id,
+            snapshot=None,
+            last_notified_at=None,
+            last_error=None,
+            notification_count=0,
+        )
+        return True
+
     def active_game_ids(self) -> tuple[int | str, ...]:
         """
         Tracked GameIds not yet finalized (ACTIVE or UNKNOWN) - i.e.

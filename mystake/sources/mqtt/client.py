@@ -65,6 +65,21 @@ class MystakeMqttClient:
 
         self._shutdown_event = threading.Event()
 
+        # Phase 5B: guards every physical socket read/write. The main
+        # thread's `receive_publish()` loop and a background discovery/
+        # handoff coordination thread (see
+        # `mystake.pipeline.prematch_to_live_handoff`) may both call into
+        # this client concurrently (the coordinator calls `subscribe()`
+        # the moment it detects a live transition, without waiting for
+        # `receive_publish()` to return). The lock is only held for the
+        # duration of one `ws.recv()`/`ws.send_binary()` call - never
+        # across a whole `receive_publish()`/`subscribe()` invocation -
+        # so neither caller can starve the other indefinitely; a PUBLISH
+        # observed by one thread while the other is mid SUBSCRIBE/
+        # UNSUBSCRIBE still lands safely in `_pending_packets` via the
+        # existing `_await_control_packet` handling.
+        self._io_lock = threading.Lock()
+
     @property
     def shutdown_requested(self) -> bool:
         return self._shutdown_event.is_set()
@@ -105,6 +120,14 @@ class MystakeMqttClient:
                 "raised (socket likely already closed)",
                 exc_info=True,
             )
+
+    def _ws_send(self, ws: websocket.WebSocket, packet: bytes) -> None:
+        with self._io_lock:
+            ws.send_binary(packet)
+
+    def _ws_recv(self, ws: websocket.WebSocket):
+        with self._io_lock:
+            return ws.recv()
 
     def _raise_if_shutdown_requested(self) -> None:
         if self._shutdown_event.is_set():
@@ -183,9 +206,9 @@ class MystakeMqttClient:
 
         connect_packet = build_connect_packet(self.client_id)
 
-        ws.send_binary(connect_packet)
+        self._ws_send(ws, connect_packet)
 
-        response = ws.recv()
+        response = self._ws_recv(ws)
 
         if response == "":
             raise ConnectionError("MQTT WebSocket closed during CONNACK")
@@ -281,7 +304,7 @@ class MystakeMqttClient:
 
         while True:
             try:
-                message = ws.recv()
+                message = self._ws_recv(ws)
 
             except websocket.WebSocketTimeoutException:
                 self._handle_read_timeout()
@@ -353,7 +376,7 @@ class MystakeMqttClient:
         )
 
         try:
-            ws.send_binary(packet)
+            self._ws_send(ws, packet)
 
             response = self._await_control_packet(
                 ws,
@@ -404,7 +427,7 @@ class MystakeMqttClient:
         )
 
         try:
-            ws.send_binary(packet)
+            self._ws_send(ws, packet)
 
             response = self._await_control_packet(
                 ws,
@@ -453,7 +476,7 @@ class MystakeMqttClient:
         acknowledging the in-flight SUBSCRIBE/UNSUBSCRIBE.
         """
         while True:
-            response = ws.recv()
+            response = self._ws_recv(ws)
 
             if response == "":
                 raise ConnectionError(
@@ -577,7 +600,7 @@ class MystakeMqttClient:
         packet = build_pingreq_packet()
 
         try:
-            ws.send_binary(packet)
+            self._ws_send(ws, packet)
 
         except websocket.WebSocketConnectionClosedException as exc:
             raise ConnectionError(
