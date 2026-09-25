@@ -15,18 +15,18 @@ def parse_live_header(
     Parse a decoded `live/headernew/en` cache payload into a flat
     tuple of `Fixture` objects.
 
-    STRONG EVIDENCE (this session): the decoded payload is a dict with
-    top-level `Games` / `Sports` / `Regions` / `Championats` / `Teams`
-    / `mk` keys.
-
-    Only `Games` is parsed here, one `Fixture` per entry. Per
-    AGENTS.md's "do not invent field mappings" rule, this does not
-    attempt to join `Games` entries against the `Sports` / `Regions`
-    / `Championats` / `Teams` lookup lists - no verified payload
-    sample exists yet to confirm the cross-reference key names, and a
-    wrong guess would silently corrupt fixture metadata. `mk` is
+    PROVEN (this session, verified against
+    `tests/fixtures/mystake-live-header-sanitized.json`): the decoded
+    payload is a dict with top-level `Games` / `Sports` / `Regions` /
+    `Championats` / `Teams` / `mk` keys. `Games[].Sport` / `.Region` /
+    `.Champ` / `.Team1` / `.Team2` are foreign-key ids resolved against
+    the corresponding top-level lookup list (each a list of
+    `{"ID": ..., "Name": ...}` records) - see
+    `mystake.models.fixture.parse_fixture_from_live_game_item`. `mk` is
     UNKNOWN (same status as the `mk` field on individual live game
-    snapshots, see docs/product/SCHEMA.md) and is not parsed.
+    snapshots, see docs/product/SCHEMA.md) and is not parsed; the
+    capture used to verify this schema has an empty `mk` array, so its
+    schema remains unobserved.
     """
     if not isinstance(payload, dict) or "Games" not in payload:
         raise ValueError(
@@ -37,7 +37,40 @@ def parse_live_header(
 
     games = payload.get("Games")
 
-    return tuple(parse_fixture_from_live_game_item(item) for item in _iter_dicts(games))
+    sports_by_id = _index_by_id(payload.get("Sports"))
+    regions_by_id = _index_by_id(payload.get("Regions"))
+    champs_by_id = _index_by_id(payload.get("Championats"))
+    teams_by_id = _index_by_id(payload.get("Teams"))
+
+    return tuple(
+        parse_fixture_from_live_game_item(
+            item,
+            sports_by_id=sports_by_id,
+            regions_by_id=regions_by_id,
+            champs_by_id=champs_by_id,
+            teams_by_id=teams_by_id,
+        )
+        for item in _iter_dicts(games)
+    )
+
+
+def _index_by_id(value: Any) -> dict[Any, dict[str, Any]]:
+    """
+    Index a lookup list (e.g. top-level `Sports`) by its `ID` field.
+    Entries missing an `ID`, or a payload where the lookup list itself
+    is absent/malformed, resolve to an empty map - callers then fall
+    back to the raw foreign-key id (see `_resolve_name`), never a
+    guessed name.
+    """
+    indexed: dict[Any, dict[str, Any]] = {}
+
+    for entry in _iter_dicts(value):
+        entry_id = entry.get("ID")
+
+        if entry_id is not None:
+            indexed[entry_id] = entry
+
+    return indexed
 
 
 def _iter_dicts(value: Any):

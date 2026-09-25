@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from mystake.pipeline.prematch_header_parser import parse_prematch_header
@@ -144,6 +146,109 @@ def test_malformed_payload_raises_instead_of_silently_emptying():
 
     with pytest.raises(ValueError):
         parse_prematch_header({})
+
+
+def test_parses_double_json_encoded_en_wrapped_dict_hierarchy():
+    """
+    PROVEN against a real `getheader/en` response this session: the
+    HTTP body decodes (via `response.json()`) to a `str`, which is
+    itself JSON containing `{"EN": {"Sports": {<id>: {...}}}}` -
+    `Sports`/`Regions`/`Champs`/`GameSmallItems` are dicts keyed by id,
+    not lists.
+    """
+    inner = {
+        "EN": {
+            "Sports": {
+                "23": {
+                    "ID": 23,
+                    "Name": "Field Hockey",
+                    "Regions": {
+                        "152": {
+                            "ID": 152,
+                            "Name": "International",
+                            "Champs": {
+                                "20109": {
+                                    "ID": 20109,
+                                    "Name": "Asian Games",
+                                    "GameSmallItems": {
+                                        "76607029": {
+                                            "ID": 76607029,
+                                            "Champ": 20109,
+                                            "Region": 152,
+                                            "Sport": 23,
+                                            "t1": 684046,
+                                            "t2": 218694,
+                                            "StartTime": "2026-09-25T13:00:00",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+    payload = json.dumps(inner)
+
+    fixtures = parse_prematch_header(payload)
+
+    assert len(fixtures) == 1
+
+    fixture = fixtures[0]
+    assert fixture.game_id == 76607029
+    # The parent node's Name is authoritative, not the item's own
+    # `Sport`/`Region`/`Champ` foreign-key id.
+    assert fixture.sport == "Field Hockey"
+    assert fixture.sport_id == 23
+    assert fixture.region == "International"
+    assert fixture.region_id == 152
+    assert fixture.champ == "Asian Games"
+    assert fixture.champ_id == 20109
+    # No team lookup list exists on this endpoint - team ids stay raw.
+    assert fixture.team1 == 684046
+    assert fixture.team2 == 218694
+
+
+def test_parent_name_wins_over_items_own_foreign_key_id():
+    payload = {
+        "Sports": [
+            {
+                "ID": 1,
+                "Name": "Soccer",
+                "Regions": [
+                    {
+                        "ID": 10,
+                        "Name": "England",
+                        "Champs": [
+                            {
+                                "ID": 100,
+                                "Name": "Premier League",
+                                "GameSmallItems": [
+                                    {
+                                        "ID": 1,
+                                        # Item's own Sport/Region/Champ
+                                        # are foreign-key ids, matching
+                                        # the parent node's own ID -
+                                        # never names.
+                                        "Sport": 1,
+                                        "Region": 10,
+                                        "Champ": 100,
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    fixtures = parse_prematch_header(payload)
+
+    assert fixtures[0].sport == "Soccer"
+    assert fixtures[0].region == "England"
+    assert fixtures[0].champ == "Premier League"
 
 
 def test_duplicate_game_ids_are_both_returned_by_parser():

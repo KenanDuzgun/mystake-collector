@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from typing import Any
 
@@ -16,18 +17,35 @@ def parse_prematch_header(
     Parse a decoded `getheader/en` response into a flat tuple of
     `Fixture` objects, across every sport/region/championship.
 
-    Observed hierarchy (PROVEN this session):
+    Observed hierarchy (PROVEN, verified against a real
+    `getheader/en` response this session):
 
+        {"EN": {"Sports": {<id>: {...}}}}
         Sports -> Regions -> Champs -> GameSmallItems
 
-    `Sport`/`Region`/`Champ` node `ID`/`Name` fields are HYPOTHESIS,
-    inferred from the `GameSmallItem.ID` convention (see
-    docs/product/SCHEMA.md) - not yet independently verified. If a
-    `Sport`/`Region`/`Champ` node's own name differs from the name
-    embedded on the `GameSmallItem` itself, the item's own value wins
-    (it is the STRONG EVIDENCE field); the parent node's name is only
-    used as a fallback when the item omits it.
+    PROVEN: the HTTP response body is itself a JSON-encoded string
+    (double-encoded) - `response.json()` on the outer body yields a
+    `str` that must be `json.loads`-ed again to reach the actual
+    `{"EN": {...}}` object. `Sports`/`Regions`/`Champs`/
+    `GameSmallItems` are each a dict keyed by the entry's own `ID` as a
+    string, not a list - this **corrects** the earlier HYPOTHESIS that
+    the top-level shape was `{"Sports": [...]}`.
+
+    PROVEN: a `GameSmallItem`'s own `Sport`/`Region`/`Champ` fields are
+    the parent node's numeric `ID` (foreign keys), not names - this
+    **corrects** the earlier "item's own value wins" assumption. The
+    parent `Sport`/`Region`/`Champ` node's `Name` is therefore always
+    preferred; the item's own raw field is only used as a fallback
+    when the parent node has no `Name` (e.g. a hypothetical variant
+    payload, or the pre-existing unit-test fixtures that model
+    `GameSmallItem.Sport` etc. as an already-resolved name string).
+    `t1`/`t2` remain raw team ids - `getheader/en` carries no team
+    lookup list to resolve them against (unlike `live/headernew/en`'s
+    `Teams` list).
     """
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+
     sports = _find_sports(payload)
 
     if sports is None:
@@ -58,19 +76,15 @@ def parse_prematch_header(
                         replace(
                             fixture,
                             sport=(
-                                fixture.sport
-                                if fixture.sport is not None
-                                else sport_name
+                                sport_name if sport_name is not None else fixture.sport
                             ),
                             region=(
-                                fixture.region
-                                if fixture.region is not None
-                                else region_name
+                                region_name
+                                if region_name is not None
+                                else fixture.region
                             ),
                             champ=(
-                                fixture.champ
-                                if fixture.champ is not None
-                                else champ_name
+                                champ_name if champ_name is not None else fixture.champ
                             ),
                             sport_id=sport_id,
                             region_id=region_id,
@@ -85,22 +99,22 @@ def _find_sports(
     payload: Any,
 ) -> Any:
     """
-    Locate the `Sports` list within the decoded `getheader/en`
-    response. The response is expected to be a dict with a top-level
-    `Sports` key; this also tolerates one extra level of nesting (e.g.
-    a language-keyed wrapper) since the exact outer envelope has not
-    been independently verified.
+    Locate the `Sports` collection within the decoded `getheader/en`
+    response. PROVEN shape: a top-level `{"EN": {"Sports": {...}}}`
+    wrapper, with `Sports` a dict keyed by id rather than a list; a
+    bare top-level `{"Sports": [...]}` (the earlier HYPOTHESIS) is
+    also tolerated for resilience/pre-existing test payloads.
     """
     if not isinstance(payload, dict):
         return None
 
     sports = payload.get("Sports")
 
-    if isinstance(sports, list):
+    if isinstance(sports, (list, dict)):
         return sports
 
     for value in payload.values():
-        if isinstance(value, dict) and isinstance(value.get("Sports"), list):
+        if isinstance(value, dict) and isinstance(value.get("Sports"), (list, dict)):
             return value["Sports"]
 
     return None

@@ -52,6 +52,8 @@ _METADATA_FIELDS = (
     "sport_id",
     "region_id",
     "champ_id",
+    "team1_id",
+    "team2_id",
 )
 
 

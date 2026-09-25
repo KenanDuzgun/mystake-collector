@@ -1,8 +1,16 @@
 import base64
 import json
+from pathlib import Path
 
 from mystake.config import CACHE_GET_BASE_URL, LIVE_HEADER_CACHE_KEY
 from mystake.pipeline.live_discovery import LiveFixtureDiscovery
+
+LIVE_HEADER_FIXTURE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "tests"
+    / "fixtures"
+    / "mystake-live-header-sanitized.json"
+)
 
 
 def wrap_cache_payload(payload: dict) -> bytes:
@@ -99,6 +107,28 @@ def test_malformed_cache_response_preserves_previous_registry():
 
     assert diff is None
     assert discovery.registry.list_all() == previous_fixtures
+
+
+def test_refresh_with_captured_fixture_populates_registry_and_resolves_names():
+    with LIVE_HEADER_FIXTURE_PATH.open("rb") as handle:
+        captured_payload = json.load(handle)
+
+    cache_client = FakeCacheClient([wrap_cache_payload(captured_payload)])
+    discovery = LiveFixtureDiscovery(cache_client=cache_client)
+
+    diff = discovery.refresh()
+
+    assert diff is not None
+    assert len(diff.added) == 84
+    assert len(discovery.registry.list_all()) == 84
+
+    sample = discovery.registry.get(76509222)
+    assert sample is not None
+    assert sample.sport == "Soccer"
+    assert sample.region == "Chile"
+    assert sample.champ == "Copa Chile, Knockout stage"
+    assert sample.team1 == "CD Everton Vina del Mar"
+    assert sample.team2 == "Universidad de Chile"
 
 
 def test_successful_refresh_with_no_fixture_changes():
