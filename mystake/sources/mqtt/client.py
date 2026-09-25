@@ -1,9 +1,9 @@
 from collections import deque
+from collections.abc import Callable
 import logging
 import random
 import ssl
 import time
-from typing import Callable
 
 import websocket
 
@@ -332,7 +332,10 @@ class MystakeMqttClient:
                 packet
             )
 
-            response = ws.recv()
+            response = self._await_control_packet(
+                ws,
+                description="SUBACK",
+            )
 
         except websocket.WebSocketConnectionClosedException as exc:
             raise ConnectionError(
@@ -345,18 +348,6 @@ class MystakeMqttClient:
                 "MQTT WebSocket network error "
                 "during SUBSCRIBE"
             ) from exc
-
-        if response == "":
-            raise ConnectionError(
-                "MQTT WebSocket closed "
-                "while waiting for SUBACK"
-            )
-
-        if isinstance(response, str):
-            raise RuntimeError(
-                "Expected binary MQTT SUBACK, "
-                f"received text: {response}"
-            )
 
         if not is_successful_suback(
             response,
@@ -402,51 +393,15 @@ class MystakeMqttClient:
                 packet
             )
 
-            while True:
-                response = ws.recv()
+            response = self._await_control_packet(
+                ws,
+                description="UNSUBACK",
+            )
 
-                if response == "":
-                    raise ConnectionError(
-                        "MQTT WebSocket closed "
-                        "while waiting for UNSUBACK"
-                    )
-
-                if isinstance(response, str):
-                    raise RuntimeError(
-                        "Expected binary MQTT message "
-                        "while waiting for UNSUBACK, "
-                        f"received text: {response}"
-                    )
-
-                if is_pingresp(response):
-                    self._awaiting_pingresp = False
-                    self._last_pingreq_at = None
-
-                    logger.info(
-                        "MQTT PINGRESP received "
-                        "while waiting for UNSUBACK"
-                    )
-                    continue
-
-                if is_successful_unsuback(
-                    response,
-                    expected_packet_id=packet_id,
-                ):
-                    break
-
-                packet_type = response[0] >> 4
-
-                if packet_type == 3:
-                    self._pending_packets.append(
-                        response
-                    )
-
-                    logger.debug(
-                        "Queued MQTT PUBLISH "
-                        "while waiting for UNSUBACK"
-                    )
-                    continue
-
+            if not is_successful_unsuback(
+                response,
+                expected_packet_id=packet_id,
+            ):
                 raise RuntimeError(
                     "Unexpected MQTT packet "
                     "while waiting for UNSUBACK: "
@@ -473,6 +428,64 @@ class MystakeMqttClient:
         )
 
         return packet_id
+
+    def _await_control_packet(
+        self,
+        ws: websocket.WebSocket,
+        *,
+        description: str,
+    ) -> bytes:
+        """
+        Read packets from the WebSocket until a non-PUBLISH,
+        non-PINGRESP control packet arrives (e.g. SUBACK/UNSUBACK).
+
+        Any PUBLISH packet observed while waiting is queued in
+        `_pending_packets` rather than dropped, since the broker may
+        deliver PUBLISH packets for other active subscriptions before
+        acknowledging the in-flight SUBSCRIBE/UNSUBSCRIBE.
+        """
+        while True:
+            response = ws.recv()
+
+            if response == "":
+                raise ConnectionError(
+                    "MQTT WebSocket closed "
+                    f"while waiting for {description}"
+                )
+
+            if isinstance(response, str):
+                raise RuntimeError(
+                    "Expected binary MQTT message "
+                    f"while waiting for {description}, "
+                    f"received text: {response}"
+                )
+
+            if is_pingresp(response):
+                self._awaiting_pingresp = False
+                self._last_pingreq_at = None
+
+                logger.info(
+                    "MQTT PINGRESP received "
+                    "while waiting for %s",
+                    description,
+                )
+                continue
+
+            packet_type = response[0] >> 4
+
+            if packet_type == 3:
+                self._pending_packets.append(
+                    response
+                )
+
+                logger.debug(
+                    "Queued MQTT PUBLISH "
+                    "while waiting for %s",
+                    description,
+                )
+                continue
+
+            return response
 
     def _reconnect_and_resubscribe(
         self,

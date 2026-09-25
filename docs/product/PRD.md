@@ -2,60 +2,74 @@
 
 ## 1. Summary
 
-A data collection tool that gathers football match metadata and betting
-odds from the MyStake betting site accurately and consistently, and writes
-them to local storage.
+A data collection tool that gathers match/fixture metadata and betting
+odds — across all sports MyStake exposes (~37 sports, ~3500 concurrent
+prematch fixtures per `getheader/en`; see
+[`docs/handoff/handoff.md`](../handoff/handoff.md)) — accurately and
+consistently, and writes them to local storage, browser-independently.
 
 ## 2. Problem / Motivation
 
-Football matches and odds on MyStake change over time. There is currently
-no reliable, reproducible pipeline to capture these changes. The first goal
+Fixtures and odds on MyStake change over time, across every sport it
+lists, not just football. There is currently no reliable, reproducible,
+browser-independent pipeline to capture these changes. The first goal
 is to prove that this pipeline works correctly; scaling and distributed
 messaging (Kafka / Google Pub-Sub) will be addressed in later stages.
 
 ## 3. Goals
 
-- Collect football match metadata (league, teams, kickoff time, etc.) from
-  MyStake.
-- Collect betting odds for those matches and record how they change over
-  time.
+- Collect fixture/event metadata (sport, region, championship, teams,
+  kickoff time, etc.) from MyStake across every sport it exposes.
+- Collect betting odds for those fixtures and record how they change over
+  time, through the full prematch -> live -> match-ended lifecycle.
 - Prioritize accuracy and consistency of the collected data over speed or
   coverage.
-- Write the collected data to local storage (CSV/JSON/SQLite) in the first
-  stage.
+- Write the collected data to local storage (CSV/JSON/SQLite) in a later
+  stage (out of scope for the current foundation milestone — see
+  `AGENTS.md` §3).
 
 ## 4. Non-goals
 
 - Supporting bookmakers other than MyStake (for now).
 - Integrating with messaging infrastructure such as Kafka or Google
   Pub-Sub (planned for later, out of scope for MVP).
+- Database/Redis infrastructure (planned for later, out of scope for the
+  current foundation milestone).
 - Guaranteeing a real-time SLA (best-effort freshness is the target).
-- Supporting sports other than football (may be expanded post-MVP).
+- Speculative semantic market-name mappings (e.g. "1X2") ahead of
+  concrete per-sport payload evidence.
 
 ## 5. Scope
 
 ### 5.1 MVP Scope
 
-- **Sport**: Football only.
+- **Sport**: All sports MyStake exposes through fixture discovery
+  (`getheader/en` for prematch, `live/headernew/en` for live — currently
+  ~37 sports / ~3500 concurrent prematch fixtures). Not football-only.
 - **Data types**:
-  - Match/event metadata (league, teams, kickoff time, match status).
-  - Betting odds and how they change over time.
-- **Data source**: MyStake's API/network requests are tried first (if
-  available). If that's not feasible, web scraping/crawling (e.g.
-  Playwright) is used instead.
-- **Data flow**: Polling is the last resort. Where possible, a push-based
-  channel such as WebSocket or SSE (Server-Sent Events) is used to capture
-  the freshest data.
+  - Fixture metadata (sport, region, championship, teams, kickoff time).
+  - Markets, selections and odds, and how they change over time.
+  - Match lifecycle transitions (prematch -> live -> match-ended).
+- **Data source**: MyStake's API/network requests (MQTT-over-WebSocket
+  push notifications, cache-indirected HTTP fetches, and the prematch/live
+  HTTP discovery + snapshot endpoints documented in
+  `docs/handoff/handoff.md`). Web scraping/crawling is a fallback only for
+  data points with no network-API path.
+- **Data flow**: Polling is the last resort. The primary channel is the
+  MQTT-over-WebSocket push notification stream MyStake's own frontend
+  uses; HTTP is used to resolve cache indirection and fetch authoritative
+  snapshots, not to poll on a timer.
 - **Storage**: Local file system (CSV/JSON/SQLite — exact choice to be
-  decided during technical design).
+  decided during technical design; not part of the current foundation
+  milestone).
 
 ### 5.2 Post-MVP Scope
 
 - Writing to a messaging system such as Kafka or Google Pub-Sub.
 - Adding support for other bookmakers (the architecture isn't forced into
   this today, but the door isn't closed either).
-- Adding sports other than football.
 - Writing to a central database (Postgres/MySQL, etc.).
+- Semantic market/selection name mappings per sport.
 
 ## 6. Success Criteria
 

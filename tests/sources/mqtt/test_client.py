@@ -303,6 +303,78 @@ def test_receive_publish_recovers_connection(
     assert message.topic == "prematch/games"
     assert message.payload == b"cache:test"
 
+def test_subscribe_preserves_publish_before_suback(
+    monkeypatch,
+) -> None:
+    client = MystakeMqttClient()
+
+    publish_packet = (
+        b"\x30\x1a"
+        b"\x00\x0e"
+        b"prematch/games"
+        b"cache:test"
+    )
+
+    suback_packet = (
+        b"\x90\x03\x00\x01\x00"
+    )
+
+    ws = Mock()
+
+    ws.recv.side_effect = [
+        publish_packet,
+        suback_packet,
+    ]
+
+    client.websocket = ws
+
+    packet_id = client.subscribe(
+        "live/gamenew/123",
+        qos=0,
+    )
+
+    assert packet_id == 1
+    assert client._subscriptions == {
+        "live/gamenew/123": 0,
+    }
+
+    message = client.receive_publish()
+
+    assert message.topic == "prematch/games"
+    assert message.payload == b"cache:test"
+
+
+def test_subscribe_ignores_pingresp_while_waiting_for_suback(
+    monkeypatch,
+) -> None:
+    client = MystakeMqttClient()
+
+    pingresp_packet = b"\xD0\x00"
+
+    suback_packet = (
+        b"\x90\x03\x00\x01\x00"
+    )
+
+    ws = Mock()
+
+    ws.recv.side_effect = [
+        pingresp_packet,
+        suback_packet,
+    ]
+
+    client.websocket = ws
+
+    packet_id = client.subscribe(
+        "live/gamenew/123",
+        qos=0,
+    )
+
+    assert packet_id == 1
+    assert client._subscriptions == {
+        "live/gamenew/123": 0,
+    }
+
+
 def test_unsubscribe_preserves_publish_before_unsuback(
     monkeypatch,
 ) -> None:

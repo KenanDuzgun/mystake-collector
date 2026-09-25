@@ -3,6 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+MATCH_ENDED_FIELDS = (
+    "Status",
+    "BetStatus",
+    "EventStatus",
+    "LiveBetStatus",
+)
+
 
 MATCH_FIELDS = (
     "GameScore",
@@ -62,6 +69,8 @@ class LiveSnapshotDiff:
     added_selections: tuple[SelectionChange, ...]
     removed_selections: tuple[SelectionChange, ...]
     new_timeline_items: tuple[dict[str, Any], ...]
+    match_ended: bool
+    match_ended_context: tuple[FieldChange, ...]
 
     @property
     def has_changes(self) -> bool:
@@ -73,6 +82,7 @@ class LiveSnapshotDiff:
                 self.added_selections,
                 self.removed_selections,
                 self.new_timeline_items,
+                self.match_ended,
             )
         )
 
@@ -180,6 +190,20 @@ def diff_live_snapshots(
         current.get("TimeLines"),
     )
 
+    match_ended = _is_match_ended_transition(
+        previous_match,
+        current_match,
+    )
+
+    match_ended_context = (
+        _build_match_ended_context(
+            previous_match,
+            current_match,
+        )
+        if match_ended
+        else ()
+    )
+
     return LiveSnapshotDiff(
         match_changes=match_changes,
         price_changes=tuple(price_changes),
@@ -189,6 +213,8 @@ def diff_live_snapshots(
         added_selections=added_selections,
         removed_selections=removed_selections,
         new_timeline_items=new_timeline_items,
+        match_ended=match_ended,
+        match_ended_context=match_ended_context,
     )
 
 
@@ -223,6 +249,49 @@ def _diff_match(
             )
 
     return tuple(changes)
+
+
+def _match_meets_ended_criteria(
+    match: dict[str, Any],
+) -> bool:
+    return (
+        match.get("Status") == 3
+        and match.get("BetStatus") == 0
+        and match.get("EventStatus") == 40
+    )
+
+
+def _is_match_ended_transition(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> bool:
+    """
+    Detect the MATCH_ENDED transition by evaluating the complete
+    current snapshot against the complete previous snapshot, rather
+    than requiring Status/BetStatus/EventStatus to change together in
+    the same notification. MyStake does not guarantee these fields
+    change simultaneously; they may reach match-ended values across
+    several successive live updates.
+    """
+    return _match_meets_ended_criteria(
+        current
+    ) and not _match_meets_ended_criteria(
+        previous
+    )
+
+
+def _build_match_ended_context(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> tuple[FieldChange, ...]:
+    return tuple(
+        FieldChange(
+            field=field,
+            old=previous.get(field),
+            new=current.get(field),
+        )
+        for field in MATCH_ENDED_FIELDS
+    )
 
 
 def _index_selections(

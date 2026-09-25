@@ -103,25 +103,28 @@ def map_live_diff_to_events(
             )
         )
 
-    if _is_match_ended(
-        match_changes
-    ):
+    if diff.match_ended:
+        match_ended_context = {
+            change.field: change
+            for change in diff.match_ended_context
+        }
+
         events.append(
             LiveDomainEvent(
                 event_type=LiveEventType.MATCH_ENDED,
                 game_id=game_id,
                 payload={
                     "status": _change_payload(
-                        match_changes.get("Status")
+                        match_ended_context.get("Status")
                     ),
                     "bet_status": _change_payload(
-                        match_changes.get("BetStatus")
+                        match_ended_context.get("BetStatus")
                     ),
                     "event_status": _change_payload(
-                        match_changes.get("EventStatus")
+                        match_ended_context.get("EventStatus")
                     ),
                     "live_bet_status": _change_payload(
-                        match_changes.get("LiveBetStatus")
+                        match_ended_context.get("LiveBetStatus")
                     ),
                 },
             )
@@ -231,29 +234,6 @@ def _first_change(
             return change
 
     return None
-
-
-def _is_match_ended(
-    changes: dict[str, Any],
-) -> bool:
-    status = changes.get("Status")
-    bet_status = changes.get("BetStatus")
-    event_status = changes.get("EventStatus")
-
-    if status is None:
-        return False
-
-    if bet_status is None:
-        return False
-
-    if event_status is None:
-        return False
-
-    return (
-        status.new == 3
-        and bet_status.new == 0
-        and event_status.new == 40
-    )
 
 
 def _change_payload(

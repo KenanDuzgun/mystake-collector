@@ -532,6 +532,65 @@ def test_maps_match_ended():
     }
 
 
+def test_maps_match_ended_when_only_last_field_changes():
+    """
+    Regression test for the mapper: MATCH_ENDED must fire even when
+    only the final one of Status/BetStatus/EventStatus changes in
+    this particular update, as long as the complete current snapshot
+    meets match-ended criteria and the previous snapshot did not.
+    """
+    previous = {
+        "Match": {
+            "GameID": 100,
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 4,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "GameID": 100,
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    events = map_live_diff_to_events(
+        diff,
+        current,
+    )
+
+    event_types = {
+        event.event_type
+        for event in events
+    }
+
+    assert LiveEventType.MATCH_ENDED in event_types
+
+    match_ended_event = next(
+        event
+        for event in events
+        if event.event_type
+        == LiveEventType.MATCH_ENDED
+    )
+
+    assert match_ended_event.payload["event_status"] == {
+        "old": 4,
+        "new": 40,
+    }
+
+
 def test_live_bet_status_false_alone_does_not_end_match():
     previous = {
         "Match": {

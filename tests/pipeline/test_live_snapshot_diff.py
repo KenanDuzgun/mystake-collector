@@ -230,6 +230,131 @@ def test_detects_new_timeline_item():
     )
 
 
+def test_match_ended_when_all_fields_change_together():
+    previous = {
+        "Match": {
+            "Status": 1,
+            "BetStatus": 1,
+            "EventStatus": 4,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    assert diff.match_ended is True
+
+
+def test_match_ended_when_fields_change_across_separate_updates():
+    """
+    Regression test: MyStake does not guarantee Status, BetStatus and
+    EventStatus reach their match-ended values in the same
+    notification. Only the last of the three fields changes in this
+    diff; the other two already reached their final values in an
+    earlier update. MATCH_ENDED must still be detected by evaluating
+    the complete current snapshot, not by requiring all three fields
+    to change simultaneously.
+    """
+    previous = {
+        "Match": {
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 4,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    assert diff.match_ended is True
+
+    context = {
+        change.field: (change.old, change.new)
+        for change in diff.match_ended_context
+    }
+
+    assert context["Status"] == (3, 3)
+    assert context["BetStatus"] == (0, 0)
+    assert context["EventStatus"] == (4, 40)
+
+
+def test_match_ended_does_not_refire_once_already_ended():
+    snapshot = {
+        "Match": {
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        snapshot,
+        snapshot,
+    )
+
+    assert diff.match_ended is False
+    assert diff.match_ended_context == ()
+
+
+def test_partial_match_ended_fields_do_not_trigger():
+    previous = {
+        "Match": {
+            "Status": 1,
+            "BetStatus": 1,
+            "EventStatus": 4,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    current = {
+        "Match": {
+            "Status": 3,
+            "BetStatus": 1,
+            "EventStatus": 4,
+        },
+        "gmk": [],
+        "TimeLines": [],
+    }
+
+    diff = diff_live_snapshots(
+        previous,
+        current,
+    )
+
+    assert diff.match_ended is False
+
+
 def test_no_changes():
     snapshot = {
         "Match": {
