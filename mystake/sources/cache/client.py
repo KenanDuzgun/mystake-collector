@@ -1,11 +1,23 @@
 import logging
 import random
 import time
+from urllib.parse import urlencode
 
 import httpx
 
+from mystake.config import CACHE_GET_BASE_URL
 
 logger = logging.getLogger(__name__)
+
+
+def build_cache_get_url(key: str) -> str:
+    """
+    Build a `{CACHE_GET_BASE_URL}?key=<key>` cache-resource URL, per
+    the pattern observed for `prematch/games` (docs/handoff/handoff.md
+    section 7). Used for cache resources fetched proactively (i.e. not
+    received as a `cache:` URL inside an MQTT PUBLISH payload).
+    """
+    return f"{CACHE_GET_BASE_URL}?{urlencode({'key': key})}"
 
 
 class MystakeCacheClient:
@@ -84,8 +96,7 @@ class MystakeCacheClient:
                 )
 
                 logger.warning(
-                    "Cache request failed attempt=%s/%s "
-                    "retry_in=%.2fs error=%s",
+                    "Cache request failed attempt=%s/%s retry_in=%.2fs error=%s",
                     attempt,
                     self.max_attempts,
                     sleep_seconds,
@@ -99,9 +110,7 @@ class MystakeCacheClient:
                     self.retry_max_delay,
                 )
 
-        raise RuntimeError(
-            "Cache request failed unexpectedly"
-        )
+        raise RuntimeError("Cache request failed unexpectedly")
 
     def close(self) -> None:
         self.client.close()
@@ -113,9 +122,7 @@ class RetryableHttpError(RuntimeError):
         status_code: int,
         url: str,
     ) -> None:
-        super().__init__(
-            f"Retryable HTTP status={status_code} url={url}"
-        )
+        super().__init__(f"Retryable HTTP status={status_code} url={url}")
 
         self.status_code = status_code
         self.url = url

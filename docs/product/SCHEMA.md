@@ -20,7 +20,9 @@ known fields below are lifted into typed attributes.
 
 ## 1. Fixture discovery (`getheader/en`) — PROVEN endpoint, STRONG EVIDENCE schema
 
-`GET /api/sport/getheader/en` returns a hierarchy:
+`GET https://analytics-sp.googleserv.tech/api/sport/getheader/en`
+returns a hierarchy directly as JSON (no cache indirection, no base64
+wrapping):
 
 ```text
 Sports
@@ -29,19 +31,126 @@ Sports
       -> GameSmallItems
 ```
 
-Each `GameSmallItem` (modeled as `mystake.models.Fixture`):
+Parsed by `mystake.pipeline.prematch_header_parser.parse_prematch_header`,
+which walks this hierarchy and builds one `mystake.models.Fixture` per
+`GameSmallItem`.
+
+Each `GameSmallItem`:
 
 | Field       | Type   | Status         | Notes                              |
 |-------------|--------|----------------|-------------------------------------|
-| `GameId`    | int    | PROVEN          | primary key, cross-referenced with prematch/live topics |
+| `ID`        | int    | PROVEN (Phase 2 session) | fixture identifier. **Corrects Phase 1's `GameId` assumption** — `GameId` is not the observed key on `GameSmallItem` itself (it is, however, the key used by the unrelated `prematch/games` `UpdateList` payload — see section 2 below). `parse_fixture_from_getheader_item` reads `ID` first, falling back to `GameId` only for resilience. |
 | `Sport`     | str    | PROVEN          | ~37 distinct sports observed        |
 | `Region`    | str    | STRONG EVIDENCE | e.g. "England"                      |
 | `Champ`     | str    | STRONG EVIDENCE | e.g. "Premier League"                |
 | `StartTime` | int    | STRONG EVIDENCE | kickoff timestamp                    |
 | `t1` / `t2` | varies | STRONG EVIDENCE | team identifiers                    |
 
-`live/headernew/en` is believed to be the live-fixture equivalent of
-`getheader/en` (STRONG EVIDENCE, not yet formally diffed field-by-field).
+Parent hierarchy nodes (`Sport`, `Region`, `Champ` objects under
+`Sports`/`Regions`/`Champs`) are each assumed to carry their own `ID`
+and `Name` fields (e.g. a `Sport` node's own `ID`/`Name`, distinct from
+the `Sport` string embedded on each `GameSmallItem`). This is
+**HYPOTHESIS**: inferred by analogy with the now-proven
+`GameSmallItem.ID` convention, not independently verified. Surfaced on
+`Fixture` as `sport_id` / `region_id` / `champ_id`. If a
+`GameSmallItem` omits its own `Sport`/`Region`/`Champ` name, the
+parent node's `Name` is used as a fallback.
+
+Top-level response envelope: assumed to be `{"Sports": [...]}`
+directly (the `EN` label in the original hierarchy sketch is
+descriptive of the language-scoped endpoint, not an observed JSON
+key). `parse_prematch_header` tolerates one extra level of dict
+nesting defensively, but this has not been observed as necessary.
+
+### 1a. Live fixture discovery (`live/headernew/en`) — STRONG EVIDENCE top-level shape, UNKNOWN inner schema
+
+Reached via the same cache-indirection pipeline as other MQTT-notified
+resources (`mystake.sources.cache.client.MystakeCacheClient` +
+`mystake.pipeline.cache_decoder.decode_cache_response`), fetched
+proactively via `{CACHE_GET_BASE_URL}?key=live/headernew/en` —
+**STRONG EVIDENCE by analogy** with the `prematch/games` cache-get URL
+pattern (handoff.md section 7), not directly observed for this
+specific key. No MQTT topic exists for live header invalidation
+(none has been observed); `mystake.pipeline.live_discovery.LiveFixtureDiscovery.refresh()`
+must be called explicitly.
+
+Decoded payload top-level shape (STRONG EVIDENCE, this session):
+
+```text
+Games
+Sports
+Regions
+Championats
+Teams
+mk
+```
+
+This is **not** the same nested shape as `getheader/en` — it appears
+to be a flatter/normalized structure (a `Games` list plus separate
+`Sports`/`Regions`/`Championats`/`Teams` lookup lists), though this is
+not confirmed.
+
+`mystake.pipeline.live_header_parser.parse_live_header` parses only
+`Games`, one `Fixture` per entry (`source="live_headernew"`). Per
+AGENTS.md's "do not invent field mappings" rule, it does **not**
+attempt to cross-reference `Games` entries against
+`Sports`/`Regions`/`Championats`/`Teams` by id — the exact
+cross-reference key names are UNKNOWN and no captured payload sample
+has been verified. Each `Games` entry is parsed with the same
+field-extraction convention already proven for `GameSmallItem` (`ID`
+for the identifier, `Sport`/`Region`/`Champ`/`t1`/`t2` if present) as
+a HYPOTHESIS best effort; any field not present on the entry comes
+back `None` rather than being guessed, and the complete raw entry is
+always preserved on `Fixture.raw`. `mk` is UNKNOWN and unparsed (same
+status as the `mk` field on individual live game snapshots — see
+section 3 below).
+
+**Still UNKNOWN**: whether `Games` entries actually carry
+`Sport`/`Region`/`Champ`/`t1`/`t2` directly, or whether resolving
+fixture metadata requires the `Sports`/`Regions`/`Championats`/`Teams`
+join. This needs a captured `live/headernew/en` payload sample to
+resolve. Until then, live `Fixture.sport`/`region`/`champ` may come
+back `None` in real traffic even though the fixture (`game_id`) itself
+is discovered correctly.
+
+## 1b. Fixture registries and refresh lifecycle
+
+`mystake.registry.fixture_registry.FixtureRegistry` is a generic
+in-memory `game_id -> Fixture` store, used for two separate instances
+(prematch, live — never shared). `refresh(fixtures)` replaces the
+contents and classifies every `game_id` as one of:
+
+```text
+ADDED
+REMOVED
+METADATA_CHANGED
+UNCHANGED
+```
+
+`REMOVED` means only "this GameId is no longer present in the last
+discovery response" — it is **not** inferred to mean the match ended,
+and DeleteList-style permanent-deletion semantics are still UNKNOWN
+(see section 4). `METADATA_CHANGED` compares `sport`/`region`/`champ`/
+`start_time`/`team1`/`team2`/`sport_id`/`region_id`/`champ_id`; `raw`
+is intentionally excluded from that comparison (upstream payloads may
+reorder/reformat unrelated raw fields between fetches without any of
+these being a real metadata change — this is a design choice, not
+independently observed).
+
+A discovery service (`PrematchFixtureDiscovery` / `LiveFixtureDiscovery`
+in `mystake.pipeline`) preserves the previous registry state whenever
+the HTTP/cache request fails, or the response cannot be parsed into a
+recognizable `Sports`/`Games` shape — both parsers raise `ValueError`
+in that case (rather than silently returning zero fixtures) precisely
+so a malformed response is never mistaken for "everything was
+removed".
+
+`PrematchHeaderRefreshHandler` subscribes to MQTT `prematch/header`
+(PROVEN topic, exact payload semantics UNKNOWN) and triggers
+`PrematchFixtureDiscovery.refresh()` on each notification, skipping a
+refresh only when the raw/decoded notification value is byte-identical
+to the immediately preceding one (a conservative dedup — it does not
+assume anything about what the payload actually encodes).
 
 ## 2. Prematch authoritative snapshot (`getprematchgamefull`) — PROVEN
 
@@ -168,5 +277,19 @@ diff's changed-field set.
 - `ch` / context id `28` exact meaning.
 - `prematch/markets` topic payload semantics (looks like a
   timestamp/version marker per handoff.md §8).
-- `mk` top-level live field.
+- `mk` top-level live field (both on `live/gamenew/{GameId}` and on
+  `live/headernew/en`).
 - Prematch -> live GameId transition (same id vs. new id at kickoff).
+- `prematch/header` notification payload semantics — decoded but not
+  interpreted; used only for byte/value-equality dedup (section 1b).
+- `live/headernew/en`'s `Games` entry field layout, and whether/how it
+  cross-references the `Sports`/`Regions`/`Championats`/`Teams` lookup
+  lists in the same payload (section 1a) — no live payload has been
+  captured/verified this session, so live fixture `sport`/`region`/
+  `champ` resolution is not yet implemented, only hypothesized.
+- Whether the `{CACHE_GET_BASE_URL}?key=live/headernew/en` URL pattern
+  (inferred by analogy with `prematch/games`) is actually correct for
+  this key — not directly observed.
+- `Sport`/`Region`/`Champ` parent-node `ID`/`Name` field names on
+  `getheader/en` (section 1) — inferred by analogy with
+  `GameSmallItem.ID`, not independently verified.

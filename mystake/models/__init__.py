@@ -1,6 +1,7 @@
 from mystake.models.fixture import (
     Fixture,
     parse_fixture_from_getheader_item,
+    parse_fixture_from_live_game_item,
 )
 from mystake.models.market import (
     Market,
@@ -24,6 +25,7 @@ __all__ = (
     "Selection",
     "Snapshot",
     "parse_fixture_from_getheader_item",
+    "parse_fixture_from_live_game_item",
     "parse_live_markets",
     "parse_live_selection",
     "parse_live_snapshot",

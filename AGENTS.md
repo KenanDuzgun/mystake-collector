@@ -41,19 +41,26 @@ abstraction beyond the current milestone's scope):
 
 ```
 mystake/
-    config.py       # MQTT/cache constants
+    config.py       # MQTT/cache/HTTP constants
     sources/
         mqtt/        # MQTT-over-WebSocket transport (protocol.py, client.py, message.py)
-        cache/       # HTTP cache-indirection client
-    pipeline/        # decoding / transformation / diff
+        cache/       # HTTP cache-indirection client (base64/gzip cache resources)
+        http/        # plain HTTP JSON client (e.g. getheader/en)
+    pipeline/        # decoding / transformation / diff / discovery orchestration
         cache_decoder.py          # base64/gzip/JSON cache payload decoding
         notification_processor.py # MQTT PUBLISH -> cache fetch -> decoded payload
         live_snapshot_diff.py     # previous/current live snapshot -> diff
+        prematch_header_parser.py # getheader/en hierarchy -> Fixture tuple
+        live_header_parser.py     # live/headernew/en Games[] -> Fixture tuple
+        prematch_discovery.py     # getheader/en fetch + parse + registry refresh + MQTT prematch/header handler
+        live_discovery.py         # live/headernew/en fetch + parse + registry refresh
+    registry/        # in-memory fixture state + snapshot diff (ADDED/REMOVED/METADATA_CHANGED/UNCHANGED)
+        fixture_registry.py
     events/          # semantic events derived from a live diff
         models.py
         mapper.py
     models/          # typed, source-agnostic domain models
-        fixture.py    # Fixture (getheader/en GameSmallItem)
+        fixture.py    # Fixture (getheader/en GameSmallItem, live/headernew/en Games entry)
         market.py     # Market (+ prematch/live parsers)
         selection.py  # Selection (+ prematch/live parsers)
         snapshot.py   # Snapshot (+ prematch/live parsers)
@@ -64,6 +71,7 @@ docs/
         SCHEMA.md
     handoff/
         handoff.md
+discover_fixtures.py  # Phase 2 CLI: browser-independent fixture discovery
 ```
 
 Layer rule (see `docs/handoff/handoff.md` §2):
