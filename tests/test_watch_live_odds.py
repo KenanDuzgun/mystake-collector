@@ -11,6 +11,7 @@ from mystake.sources.mqtt.client import ListenerShutdown, MystakeMqttClient
 from mystake.sources.mqtt.message import MqttPublishMessage
 from watch_live_odds import (
     install_shutdown_signal_handlers,
+    reconcile_once,
     run,
     select_auto_game_ids,
     serve,
@@ -48,6 +49,7 @@ class FakeMqttClient:
         self._subscribe_error = subscribe_error
         self.connect_calls = 0
         self.subscribed_topics: list[str] = []
+        self.unsubscribed_topics: list[str] = []
         self.closed = False
         self._shutdown = False
 
@@ -66,6 +68,12 @@ class FakeMqttClient:
             raise self._subscribe_error
 
         self.subscribed_topics.append(topic)
+        return 1
+
+    def unsubscribe(self, topic: str) -> int:
+        self.unsubscribed_topics.append(topic)
+        if topic in self.subscribed_topics:
+            self.subscribed_topics.remove(topic)
         return 1
 
     def receive_publish(self) -> MqttPublishMessage:
@@ -106,6 +114,28 @@ def make_dispatcher(game_ids, cache_payloads):
     cache_client = FakeCacheClient(cache_payloads)
     dispatcher = LiveOddsDispatcher(registry, NotificationProcessor(cache_client))
     return dispatcher, cache_client
+
+
+def make_dispatcher_with_mqtt(game_ids, cache_payloads, mqtt_client):
+    registry = LiveGameRegistry(game_ids)
+    cache_client = FakeCacheClient(cache_payloads)
+    dispatcher = LiveOddsDispatcher(
+        registry, NotificationProcessor(cache_client), mqtt_client=mqtt_client
+    )
+    return dispatcher, cache_client
+
+
+def terminal_snapshot(game_id, score="2:1"):
+    return {
+        "Match": {
+            "GameID": game_id,
+            "Score": score,
+            "Status": 3,
+            "BetStatus": 0,
+            "EventStatus": 40,
+        },
+        "gmk": [],
+    }
 
 
 def new_stats(game_ids):
@@ -479,3 +509,114 @@ def test_format_price_change_block_unknown_when_no_metadata():
 
     assert "MARKET: 2 | UNKNOWN" in block
     assert "SELECTION: 1 | UNKNOWN" in block
+
+
+# --- Phase 4D: lifecycle end-to-end through run() ---
+
+
+def test_terminal_transition_unsubscribes_and_stops_further_processing():
+    mqtt_client = FakeMqttClient(
+        [
+            make_message("live/gamenew/1", "https://example.com/1a"),
+            make_message("live/gamenew/1", "https://example.com/1b"),
+            make_message("live/gamenew/1", "https://example.com/1c"),
+        ]
+    )
+    dispatcher, _cache = make_dispatcher_with_mqtt(
+        [1],
+        {
+            "https://example.com/1a": snapshot(1, score="0:0"),
+            "https://example.com/1b": terminal_snapshot(1, score="2:1"),
+            # deliberately unregistered - a late PUBLISH must never reach
+            # the cache client after finalization
+        },
+        mqtt_client,
+    )
+    stats = new_stats([1])
+
+    with pytest.raises(StopTest):
+        run(mqtt_client, dispatcher, (1,), stats, observe_seconds=999, debug=False)
+
+    assert dispatcher.registry.is_finalized(1) is True
+    assert dispatcher.registry.get(1).snapshot["Match"]["Score"] == "2:1"
+    assert mqtt_client.unsubscribed_topics == ["live/gamenew/1"]
+
+
+def test_finalized_game_does_not_affect_other_tracked_game_in_run_loop():
+    mqtt_client = FakeMqttClient(
+        [
+            make_message("live/gamenew/1", "https://example.com/1a"),
+            make_message("live/gamenew/1", "https://example.com/1b"),
+            make_message("live/gamenew/2", "https://example.com/2a"),
+        ]
+    )
+    dispatcher, _cache = make_dispatcher_with_mqtt(
+        [1, 2],
+        {
+            "https://example.com/1a": snapshot(1, score="0:0"),
+            "https://example.com/1b": terminal_snapshot(1, score="2:1"),
+            "https://example.com/2a": snapshot(2, score="1:0"),
+        },
+        mqtt_client,
+    )
+    stats = new_stats([1, 2])
+
+    with pytest.raises(StopTest):
+        run(mqtt_client, dispatcher, (1, 2), stats, observe_seconds=999, debug=False)
+
+    assert dispatcher.registry.is_finalized(1) is True
+    assert dispatcher.registry.is_finalized(2) is False
+    assert dispatcher.registry.get(2).snapshot["Match"]["Score"] == "1:0"
+    assert mqtt_client.unsubscribed_topics == ["live/gamenew/1"]
+
+
+class FakeDiscoveryRegistry:
+    def __init__(self, fixtures):
+        self._fixtures = tuple(fixtures)
+
+    def list_all(self):
+        return self._fixtures
+
+
+class DiscoveryFixture:
+    def __init__(self, game_id):
+        self.game_id = game_id
+
+
+class FakeDiscovery:
+    def __init__(self, fixtures, *, fail=False):
+        self.registry = FakeDiscoveryRegistry(fixtures)
+        self._fail = fail
+        self.refresh_calls = 0
+
+    def refresh(self):
+        self.refresh_calls += 1
+        if self._fail:
+            return None
+        return object()
+
+
+def test_reconcile_once_flags_missing_game_unknown_without_finalizing():
+    from mystake.registry.live_game_registry import LiveLifecycleState
+
+    registry = LiveGameRegistry([1, 2])
+    discovery = FakeDiscovery([DiscoveryFixture(2)])
+
+    result = reconcile_once(discovery, registry)
+
+    assert result.newly_unknown == (1,)
+    assert registry.get(1).lifecycle_state is LiveLifecycleState.UNKNOWN
+    assert registry.get(1).is_finalized is False
+    assert registry.get(2).lifecycle_state is LiveLifecycleState.ACTIVE
+
+
+def test_reconcile_once_preserves_state_on_discovery_failure():
+    from mystake.registry.live_game_registry import LiveLifecycleState
+
+    registry = LiveGameRegistry([1])
+    discovery = FakeDiscovery([], fail=True)
+
+    result = reconcile_once(discovery, registry)
+
+    assert result is None
+    assert registry.get(1).lifecycle_state is LiveLifecycleState.ACTIVE

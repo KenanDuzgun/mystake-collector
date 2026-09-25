@@ -300,6 +300,54 @@ def log_outcome(
         logger.info("game_id=%s MATCH_ENDED transition detected", game_id)
 
 
+def reconcile_once(
+    discovery: LiveFixtureDiscovery,
+    registry: LiveGameRegistry,
+):
+    """
+    One bounded Step 5 reconciliation pass: re-fetches real
+    `live/headernew/en` (reusing the existing `LiveFixtureDiscovery`,
+    no new HTTP/parsing path) and reconciles it against tracked
+    GameIds via `LiveGameRegistry.reconcile_discovery`. Disappearance
+    from discovery only flags a GameId UNKNOWN for reporting - it is
+    never treated as match completion. Returns `None` if the discovery
+    refresh itself failed (previous lifecycle state is preserved
+    untouched, per AGENTS.md section 5), otherwise the
+    `LiveReconciliationResult`.
+    """
+    diff = discovery.refresh()
+
+    if diff is None:
+        logger.warning(
+            "Reconciliation: live/headernew/en refresh failed; "
+            "preserving previous lifecycle state for all tracked games"
+        )
+        return None
+
+    live_game_ids = {fixture.game_id for fixture in discovery.registry.list_all()}
+    result = registry.reconcile_discovery(live_game_ids)
+
+    if result.newly_unknown:
+        logger.warning(
+            "Reconciliation: game_id(s) %s missing from live discovery "
+            "(flagged UNKNOWN, NOT finalized)",
+            result.newly_unknown,
+        )
+    if result.recovered:
+        logger.info(
+            "Reconciliation: game_id(s) %s reappeared in live discovery "
+            "(back to ACTIVE)",
+            result.recovered,
+        )
+    if result.still_unknown:
+        logger.info(
+            "Reconciliation: game_id(s) %s still missing from live discovery",
+            result.still_unknown,
+        )
+
+    return result
+
+
 def schedule_reconciliation(
     mqtt_client: MystakeMqttClient,
     discovery: LiveFixtureDiscovery,
@@ -308,14 +356,9 @@ def schedule_reconciliation(
     interval_seconds: float,
 ) -> threading.Timer | None:
     """
-    Bounded, periodic Step 5 reconciliation: re-fetches real
-    `live/headernew/en` (reusing the existing `LiveFixtureDiscovery`,
-    no new HTTP/parsing path) and reconciles it against tracked
-    GameIds via `LiveGameRegistry.reconcile_discovery`. Disappearance
-    from discovery only flags a GameId UNKNOWN for reporting - it is
-    never treated as match completion. Self-reschedules until listener
-    shutdown is requested, bounding total reconciliation work to the
-    same wall-clock window as the observation itself.
+    Self-rescheduling wrapper around `reconcile_once`, bounded by
+    listener shutdown so total reconciliation work never outlives the
+    observation window it is called from.
     """
     if interval_seconds <= 0 or mqtt_client.shutdown_requested:
         return None
@@ -324,36 +367,7 @@ def schedule_reconciliation(
         if mqtt_client.shutdown_requested:
             return
 
-        diff = discovery.refresh()
-
-        if diff is None:
-            logger.warning(
-                "Reconciliation: live/headernew/en refresh failed; "
-                "preserving previous lifecycle state for all tracked games"
-            )
-        else:
-            live_game_ids = {
-                fixture.game_id for fixture in discovery.registry.list_all()
-            }
-            result = registry.reconcile_discovery(live_game_ids)
-
-            if result.newly_unknown:
-                logger.warning(
-                    "Reconciliation: game_id(s) %s missing from live discovery "
-                    "(flagged UNKNOWN, NOT finalized)",
-                    result.newly_unknown,
-                )
-            if result.recovered:
-                logger.info(
-                    "Reconciliation: game_id(s) %s reappeared in live discovery "
-                    "(back to ACTIVE)",
-                    result.recovered,
-                )
-            if result.still_unknown:
-                logger.info(
-                    "Reconciliation: game_id(s) %s still missing from live discovery",
-                    result.still_unknown,
-                )
+        reconcile_once(discovery, registry)
 
         schedule_reconciliation(
             mqtt_client,

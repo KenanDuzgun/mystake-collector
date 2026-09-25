@@ -718,6 +718,83 @@ complete previous `Match` snapshot (`_is_match_ended_transition`)
 rather than requiring all three fields to appear together in a single
 diff's changed-field set.
 
+### Lifecycle management (Phase 4D) — PROVEN (Soccer, incl. "SRL" simulated
+### reality league fixtures), STRONG EVIDENCE (general)
+
+`mystake/registry/live_game_registry.py` adds a per-GameId
+`LiveLifecycleState` (`ACTIVE` / `TERMINAL` / `UNKNOWN`) on top of the
+existing `match_ended` diff flag:
+
+- **ACTIVE**: default state; tracked and, as far as observed evidence
+  shows, still live.
+- **TERMINAL**: the `Status==3 && BetStatus==0 && EventStatus==40`
+  transition above has been observed for this GameId. One-way -
+  never reverted. Real-network **PROVEN** this session (see below):
+  once TERMINAL, the dispatcher (`mystake/pipeline/live_odds_dispatcher.py`)
+  unsubscribes the exact `live/gamenew/{GameId}` topic (waits for a
+  real UNSUBACK - reuses `MystakeMqttClient.unsubscribe`, no new MQTT
+  code) and ignores any further PUBLISH for that GameId without even
+  fetching its cache payload (`is_finalized` check runs before the
+  cache GET).
+- **UNKNOWN**: the GameId was absent from the latest real
+  `live/headernew/en` refresh with no terminal evidence
+  (`LiveGameRegistry.reconcile_discovery`, wired into
+  `watch_live_odds.py` via a bounded, self-rescheduling periodic
+  `reconcile_once` call). **Not itself proof of match completion**
+  (AGENTS.md explicitly forbids that inference) - the GameId stays
+  subscribed and tracked; reappearing in a later refresh, or any
+  further real MQTT notification, reverts it to ACTIVE. Only
+  unit-tested this session - no tracked GameId happened to disappear
+  from discovery during the bounded real-network observation window
+  (see below), so the real-network path through `reconcile_once` ran
+  (real HTTP fetches, real `Live registry refreshed` log lines) but
+  never actually exercised the "GameId went missing" branch. **NOT
+  VERIFIED** for the disappearance branch specifically.
+
+**Real-network verified this session** (`uv run python -u
+watch_live_odds.py --game-id 76601550 --game-id 76557634
+--observe-seconds 150 --reconcile-interval-seconds 60`), tracking two
+real concurrent Soccer fixtures:
+
+- GameId `76601550` (South Africa U20 vs Zambia U20) reached the real
+  terminal transition mid-run: `Status: 1->3`, `BetStatus: 1->0`,
+  `EventStatus: 4->40`, `LiveBetStatus: True->False` (all four in one
+  real notification this time - contrast with the Phase 4A/4D
+  diagnostic run on GameId `76420537`, an "SRL" simulated-reality-
+  league fixture, where `LiveBetStatus` changed one notification
+  before `Status`/`BetStatus`/`EventStatus` changed together in the
+  next - both shapes are handled by the existing whole-snapshot
+  `_is_match_ended_transition` comparison, not a same-notification
+  field-set requirement).
+- `MATCH_ENDED` domain event emitted exactly once for `76601550`.
+- Real `UNSUBACK` confirmed for `live/gamenew/76601550` (`Unsubscribed
+  finalized game_id=76601550 topic=live/gamenew/76601550 (UNSUBACK
+  confirmed)`).
+- One further real PUBLISH arrived for `76601550` after finalization
+  (already in flight when UNSUBACK was sent) - correctly ignored
+  without a cache fetch (`already finalized; ignoring late PUBLISH ...
+  without fetching`); final snapshot (`score=4:2 time=90`) preserved
+  unchanged.
+- The second tracked GameId, `76557634` (Republic of Korea U23 vs
+  Vietnam U23), remained `ACTIVE` throughout and kept receiving real
+  updates (292 real price changes logged) completely unaffected by
+  `76601550`'s finalization - real cross-game isolation, not just
+  unit-tested.
+- Two real periodic `reconcile_once` passes ran (`interval_seconds=60`)
+  against real `live/headernew/en`, no errors, no `newly_unknown`/
+  `still_unknown` for either tracked GameId (both stayed discoverable
+  the whole window).
+
+**NOT VERIFIED this session** (real network): a tracked GameId
+disappearing from `live/headernew/en` mid-observation (the UNKNOWN
+reconciliation branch); a reconnect occurring mid-observation with one
+ACTIVE and one already-TERMINAL tracked GameId (reconnect/resubscribe-
+skips-finalized behavior is real-network proven only insofar as
+`MystakeMqttClient.unsubscribe` already removes the topic from
+`_subscriptions` before any reconnect could occur - this specific
+interaction is otherwise unit-tested only, see
+`tests/sources/mqtt/test_client.py::test_unsubscribed_topic_is_not_resubscribed`).
+
 ## 4. Still UNKNOWN
 
 - `DeleteList` semantics on `prematch/games` notifications.
