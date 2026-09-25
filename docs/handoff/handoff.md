@@ -1,33 +1,41 @@
 
 # MyStake Collector — Complete ChatGPT Handoff
-## Updated: September 25, 2026 — After Phase 4D
 
-# 0. Instructions for the new ChatGPT conversation
+Updated: September 25, 2026
+Current development target: Phase 5C — MQTT I/O Reliability
 
-This document transfers the complete working context of the mystake-collector project.
+## 0. Instructions for the new ChatGPT
+
+This document transfers the working context of the mystake-collector project.
 
 The user should not need to explain the project again.
 
-Respond in Turkish. Technical prompts for Claude Code should generally be in English.
+Respond in Turkish.
 
-The user is an experienced Java/Spring Boot developer who is learning Python.
+Claude Code technical prompts should generally be written in English.
 
-When explaining Python, use concise Java comparisons where helpful.
+The user is an experienced Java/Spring Boot developer learning Python through this project.
 
-IMPORTANT WORKING PRINCIPLES:
+When explaining Python concepts, use concise Java comparisons where helpful.
 
-1. Evaluate the latest Claude Code report before suggesting new work.
-2. Distinguish actual network observations from unit tests.
-3. Do not treat Claude Code reports as independently inspected source code.
-4. Do not assume an older ZIP represents the current working tree.
-5. Do not repeatedly ask for HAR captures.
-6. Reuse existing infrastructure.
-7. Do not launch several large phases at once.
-8. Prioritize actual Python execution and actual JSON.
-9. Do not mark a phase real-network verified based solely on passing tests.
-10. Do not ask the user to stop an already-running Claude Code task unnecessarily.
+IMPORTANT WORKING PRINCIPLES
 
-The preferred workflow is:
+1. Evaluate actual Claude Code reports and terminal evidence.
+2. Distinguish unit tests from real-network verification.
+3. Never treat a Claude Code report as independently inspected source code.
+4. The current Mac repository is authoritative.
+5. An older ZIP is not the current working tree.
+6. Do not repeatedly request HAR captures.
+7. Reuse the existing infrastructure.
+8. Work on one development phase at a time.
+9. Prioritize real Python execution and real JSON.
+10. Do not mark a behavior verified solely because tests pass.
+11. Do not invent unknown protocol semantics.
+12. Avoid unnecessary refactoring of working components.
+13. Do not ask the user to stop an already-running Claude Code task.
+14. Preserve completed-phase knowledge across context resets.
+
+Preferred development workflow:
 
 REAL PYTHON EXECUTION
     ↓
@@ -46,68 +54,65 @@ VERIFY ACTUAL BEHAVIOR
 For every phase, answer:
 
 - What can we currently collect?
-- What is missing?
+- What remains missing?
 - What is the next SINGLE task?
-
-Avoid unnecessarily long Claude Code prompts, speculative architecture, or repetitive test cycles.
 
 ---
 
 # 1. Project overview
 
-Project name:
+Project:
 
 mystake-collector
 
-Local repository:
+Local directory:
 
 ~/Desktop/Projects/mystake-collector
 
 Objective:
 
-Collect MyStake sportsbook data directly using Python without a browser.
+Collect MyStake sportsbook data directly using Python, without browser automation.
 
 Target capabilities:
 
 - Prematch fixture discovery.
 - Live fixture discovery.
-- Market and selection discovery.
+- Market discovery.
+- Selection discovery.
 - Prematch odds.
 - Live odds.
 - Real-time price changes.
-- Score and match-time changes.
-- Fixture lifecycle.
+- Score changes.
+- Match clock.
+- Match status.
+- Prematch-to-live transitions.
 - Match-end detection.
-- Final-state preservation.
+- Final snapshot preservation.
 - Subscription cleanup.
-- Eventually, reliable prematch-to-live transitions.
-
-The collector communicates through HTTP/cache and MQTT-over-WebSocket.
+- Reliable long-running operation.
 
 The initial protocol investigation used Chrome DevTools, HAR captures, and experimental Python scripts.
 
-The core protocol is now understood sufficiently to support real prematch and multi-game live tracking.
+The collector now operates directly through HTTP/cache and MQTT-over-WebSocket.
 
-New HAR captures should only be requested when there is a concrete technical blocker.
+New HAR files should only be requested for a concrete unresolved problem.
 
 ---
 
-# 2. Technology and architecture
+# 2. Development environment
 
-Environment:
+macOS.
+Python 3.13.
+uv.
+PyCharm.
+pytest.
+Ruff.
 
-- macOS.
-- Python 3.13.
-- uv.
-- PyCharm.
-- pytest.
-- Ruff.
-
-The authoritative project instructions are in:
+Authoritative project instructions:
 
 AGENTS.md
 
-Protocol and schema documentation:
+Protocol/schema documentation:
 
 docs/product/SCHEMA.md
 
@@ -117,7 +122,7 @@ sources/
     HTTP, MQTT and cache transport.
 
 pipeline/
-    Decode, parsing, hydration, diff, dispatching.
+    Parsing, decoding, hydration, diff and orchestration.
 
 models/
     Typed data models.
@@ -128,15 +133,15 @@ registry/
 events/
     Semantic events.
 
-Keep these layers separated.
+Maintain the existing separation of responsibilities.
 
-Do not introduce Java, Spring Boot, PostgreSQL, Redis, Kafka, RabbitMQ, or multi-instance infrastructure at this stage.
+Do not introduce Java, Spring Boot, PostgreSQL, Redis, Kafka, RabbitMQ or multi-instance orchestration at this stage.
 
-The user has considered moving the collector to Java but explicitly decided to continue with Python for now.
+The user considered moving the collector to Java but chose to continue with Python.
 
 ---
 
-# 3. Important protocol facts
+# 3. Core protocol
 
 ## Prematch discovery
 
@@ -144,13 +149,13 @@ Endpoint:
 
 GET https://analytics-sp.googleserv.tech/api/sport/getheader/en
 
-Response characteristics:
+Important characteristics:
 
-- May be double-JSON-encoded.
-- Contains an EN wrapper.
-- Sports, Regions, Champs and GameSmallItems may be dictionary-keyed.
-- GameSmallItem Sport/Region/Champ values are foreign-key IDs.
-- Parent hierarchy and lookup names must be preserved.
+- Response may be double-JSON-encoded.
+- An EN wrapper is present.
+- Sports, Regions, Champs and GameSmallItems may be dict-keyed.
+- Sport/Region/Champ references are foreign-key IDs.
+- Parent hierarchy must be preserved.
 
 Hierarchy:
 
@@ -161,9 +166,9 @@ Sports
 
 GameSmallItems[].ID is the prematch GameId.
 
-Previous real observations contained more than 4,000 fixtures.
+Historical observations returned more than 4,000 fixtures.
 
-These counts are historical observations, not fixed expectations.
+These are historical counts, not fixed expectations.
 
 ## Live discovery
 
@@ -180,7 +185,7 @@ Championats
 Teams
 mk
 
-Relationships:
+References:
 
 Games[].Sport -> Sports[].ID
 Games[].Region -> Regions[].ID
@@ -188,33 +193,29 @@ Games[].Champ -> Championats[].ID
 Games[].Team1 -> Teams[].ID
 Games[].Team2 -> Teams[].ID
 
-Important sanitized fixture:
+Historical sanitized fixture:
 
 tests/fixtures/mystake-live-header-sanitized.json
 
-Do not rename, overwrite, or unnecessarily regenerate this file.
+Do not rename or overwrite it.
 
-## MQTT subscriptions
+## MQTT
 
-Prematch header:
+Known topics:
 
 prematch/header
 
-Prematch game notifications:
-
 prematch/games
-
-Individual live match:
 
 live/gamenew/{GameId}
 
-The wildcard subscription:
+Wildcard:
 
 live/gamenew/#
 
-was previously rejected with SUBACK 0x80.
+Previously rejected with SUBACK 0x80.
 
-Use exact subscriptions for tracked live GameIds.
+Use exact topic subscriptions.
 
 ## Live data flow
 
@@ -226,7 +227,7 @@ HTTP GET
     ↓
 Base64 decode
     ↓
-Optional GZIP decompression
+Optional GZIP
     ↓
 JSON
     ↓
@@ -236,74 +237,55 @@ Diff
     ↓
 Semantic events
 
-Reuse the existing transport, decoding, and notification infrastructure.
+Reuse existing transport and decoding components.
 
 ---
 
-# 4. Completed development history
+# 4. Completed phases
 
 ## Phase 1 — Foundation
 
 COMPLETED.
 
-Implemented:
+MQTT client, packet handling, HTTP/cache decoding, Base64/GZIP, typed models and snapshot/diff infrastructure.
 
-- MQTT client.
-- MQTT protocol packet handling.
-- SUBACK/PUBLISH handling.
-- HTTP/cache decoding.
-- Base64/GZIP.
-- Typed models.
-- Snapshot/diff infrastructure.
-- Initial match-end detection.
+Historical baseline:
 
-Historical test baseline:
-
-69 passed.
+69 tests passed.
 
 ## Phase 2 — Fixture Discovery
 
 COMPLETED.
 
-Prematch and live fixture discovery were verified against real network responses.
+Real prematch and live discovery verified.
 
-Prematch discovery returned more than 4,000 fixtures during previous observations.
-
-The sanitized live-header fixture is preserved in tests/fixtures/.
+Prematch discovery observed more than 4,000 fixtures.
 
 ## Phase 2B — MQTT Header Refresh
 
 COMPLETED.
 
-prematch/header is a refresh/revalidation signal, not an authoritative fixture delta.
+prematch/header acts as a refresh/revalidation signal.
 
-Existing pipeline:
+It is not an authoritative fixture delta.
 
-MQTT notification
-    ↓
-PrematchHeaderRefreshHandler
-    ↓
-HTTP header refresh
-    ↓
-FixtureRegistry reconciliation
+Implemented registry reconciliation and graceful shutdown.
 
-Graceful shutdown was fixed and verified.
+Historical baseline:
 
-Historical test baseline:
-
-150 passed.
+150 tests passed.
 
 ## Phase 3 — Prematch Market Hydration
 
 COMPLETED.
 
-Authoritative full snapshot endpoint pattern:
+Authoritative full snapshot endpoint:
 
 getprematchgamefull/28/{GameId}
 
-The earlier gameall partial-merge approach was unreliable.
+Do not revert to treating gameall as a complete authoritative delta.
 
-Production approach:
+Correct approach:
 
 FULL SNAPSHOT
     ↓
@@ -313,9 +295,7 @@ DIFF
     ↓
 ATOMIC REPLACEMENT
 
-Do not revert to treating gameall as an authoritative complete delta.
-
-Existing components include:
+Existing components:
 
 PrematchSnapshotHydrator
 PrematchOddsTracker
@@ -323,117 +303,105 @@ PrematchGamesRevalidationHandler
 GameSnapshotRegistry
 diff_prematch_snapshots()
 
-Concurrency and request pacing are bounded.
+Use bounded concurrency and request pacing.
 
-Do not blindly hydrate thousands of matches.
-
-## Phase 3B — Real Prematch MQTT Notifications
+## Phase 3B — Actual MQTT Notifications
 
 COMPLETED.
 
-Actual prematch/games payload contained:
+prematch/games payload contains:
 
-UpdateList:
-    GameId
-    UpdateTimeStamp
+UpdateList
+DeleteList
 
-DeleteList was observed empty.
+UpdateList entries contain GameId.
 
-Exact DeleteList semantics remain UNKNOWN.
+UpdateTimeStamp was observed.
 
-UpdateTimeStamp exact semantics remain UNKNOWN.
+Exact timestamp semantics remain UNKNOWN.
 
-Historical test baseline:
+Nonempty DeleteList semantics remain UNKNOWN.
 
-198 passed.
+Historical baseline:
+
+198 tests passed.
 
 ## Phase 3C — Real Prematch Odds Changes
 
 COMPLETED.
 
-Instead of selecting random fixtures, actual MQTT UpdateList GameIds were observed first.
-
-A tracked GameId then received real revalidation notifications.
+Actual MQTT notification GameIds were observed before selecting tracked fixtures.
 
 GameId:
 
 76335839
 
-Actual observed price changes:
+Real observed price changes:
 
 41.
 
-This was real network traffic, not simulation.
+Historical baseline:
 
-Historical test baseline:
-
-206 passed.
+206 tests passed.
 
 ---
 
-# 5. Phase 4A — Real Single Live Match Observation
+# 5. Phase 4A — Single Live Match
 
 COMPLETED.
 
-Diagnostic executable:
+Diagnostic:
 
 observe_live_match.py
 
-Actual observed fixture:
+Observed fixture:
 
 GameId=75832139
 
-Municipal vs CD Suchitepequez
+Municipal vs CD Suchitepequez.
 
-Sport: Soccer.
-
-Initial snapshot:
+Actual observations:
 
 23 markets.
 126 selections.
-
-Observation:
-
 18 real MQTT PUBLISH messages.
-18 successfully decoded snapshots.
-373 real selection price changes.
+18 decoded snapshots.
+373 real price changes.
 4 selection removals.
 
 Clock advanced.
 
-No goal or match-end transition occurred during this specific observation.
-
-The captured JSON file was located in an external Claude scratchpad directory:
-
-observed_live_snapshot.json
-
-It was not located inside the project repository.
-
-Do not assume that this historical scratchpad still exists.
+No goal or terminal transition was observed during this particular experiment.
 
 Important discovery:
 
-The live payload's mk array contains human-readable market metadata.
+mk contains market metadata.
 
-The gmk array contains market/selection/price data.
+gmk contains selection and price data.
+
+A historical observed_live_snapshot.json was found in an external Claude scratchpad directory, not inside the project.
+
+Do not assume this scratchpad remains available.
 
 ---
 
-# 6. Phase 4B — Bounded Multi-Game Live Tracking
+# 6. Phase 4B — Multi-Game Live Tracking
 
 COMPLETED.
 
-New components reported:
+Main executable:
 
-mystake/registry/live_game_registry.py
-mystake/pipeline/live_odds_dispatcher.py
 watch_live_odds.py
 
-Actual command:
+Important components:
 
-uv run python -u watch_live_odds.py --max-games 5 --observe-seconds 90
+mystake/registry/live_game_registry.py
 
-Five different sports were tracked:
+mystake/pipeline/live_odds_dispatcher.py
+
+Five real games across five sports were tracked.
+
+Sports:
 
 Baseball.
 Soccer.
@@ -441,33 +409,29 @@ Counter-Strike.
 Tennis.
 Basketball.
 
-All five exact MQTT subscriptions received accepted SUBACKs.
+All exact subscriptions received accepted SUBACKs.
 
-All five games received independent initial snapshots.
+All games received independent initial snapshots.
 
-Real price changes were observed in three sports:
+Real price changes:
 
 Soccer: 645.
 Tennis: 337.
 Basketball: 93.
 
-Baseball and Counter-Strike received PUBLISH messages but showed no price changes within that specific observation window.
+Baseball and Counter-Strike received PUBLISH messages but had no price movement in that observation window.
 
-Cross-game state isolation was verified through reported real logs.
+Per-game state isolation verified.
 
-Reconnect/resubscribe was unit-tested, not real-network verified.
+Historical baseline:
 
-Historical test baseline:
-
-238 passed.
+238 tests passed.
 
 ---
 
-# 7. Phase 4C — Market & Selection Name Enrichment
+# 7. Phase 4C — Market & Selection Enrichment
 
 COMPLETED.
-
-The collector now exposes human-readable metadata.
 
 Actual join:
 
@@ -476,102 +440,73 @@ mk[].ID == gmk[].mid
 Verified fields:
 
 mk[].Name:
-    Human-readable market name.
+    Market name.
 
 gmk[].pn:
-    Human-readable selection/outcome name.
+    Selection/outcome name.
 
 gmk[].h:
-    Line/handicap value where present.
+    Line/handicap where present.
 
 Actual example:
 
-GameId: 75943936
-Fixture: Australia vs Brazil
+GameId=75943936
 
-MarketId: 619
-Market: Matchbet and Totals
+Australia vs Brazil
 
-SelectionId: 2876659054
-Selection: home and under
+MarketId=619
+Market=Matchbet and Totals
 
-Line: 2.5
+SelectionId=2876659054
+Selection=home and under
+
+Line=2.5
 
 Price:
 8.00 -> 8.25
 
-Model changes:
+Model additions:
 
-Market:
-    name
-    is_handicap
-    column_count
+Market.name
+Market.is_handicap
+Market.column_count
 
-Selection:
-    name
-    line
+Selection.name
+Selection.line
 
-New enrichment component:
+Enrichment component:
 
 mystake/pipeline/live_market_enrichment.py
 
-This builds selection metadata from the current snapshot for display.
+Unknown fields such as pid, posn and p3 were not assigned speculative meanings.
 
-Unknown fields such as pid, posn and p3 were not assigned speculative semantics.
+Market-name placeholders remain unsubstituted.
 
-Market-name placeholders such as {$competitor1} remain unsubstituted.
+Prematch market-name enrichment was not added.
 
-Prematch market-name enrichment is not implemented by this live-only change.
+Historical baseline:
 
-Actual network observation covered five games across multiple sports.
-
-The report mentioned 100 enriched output blocks, while per-sport price-change counts summed to a larger number. These represent differently reported metrics and should not be conflated without inspecting the logs.
-
-Historical test baseline:
-
-253 passed.
-
-Ruff checks passed on all modified files.
+253 tests passed.
 
 ---
 
-# 8. Phase 4D — Live Fixture Lifecycle & Match-End
+# 8. Phase 4D — Live Lifecycle & Match-End
 
 COMPLETED.
 
-This is the most recently completed phase.
+Existing components already contained:
 
-Existing infrastructure already contained:
+match_ended diff flag.
+MATCH_ENDED domain event.
+MQTT unsubscribe support.
 
-- A match_ended diff flag.
-- MATCH_ENDED semantic event.
-- MQTT unsubscribe/UNSUBACK support.
+Phase 4D integrated lifecycle management.
 
-Phase 4D integrated lifecycle management into the existing LiveGameRegistry and LiveOddsDispatcher.
+Real observed match:
 
-Implemented/reported behavior:
+GameId=76601550
 
-- Lifecycle state management.
-- Terminal detection.
-- Final snapshot preservation.
-- Exactly-once finalization.
-- MQTT unsubscribe.
-- Active registry cleanup.
-- Ignoring late PUBLISH messages.
-- Per-game isolation.
-- Bounded discovery reconciliation.
-
-## Actual real-network observation
-
-GameId:
-
-76601550
-
-Fixture:
-
-South Africa U20 vs Zambia U20
-
-Sport:
+South Africa U20 vs Zambia U20.
 
 Soccer.
 
@@ -597,294 +532,690 @@ MatchTime:
 
 90
 
-Actual command:
+Real UNSUBACK confirmed.
 
-uv run python -u watch_live_odds.py --game-id 76601550 --game-id 76557634 --observe-seconds 150 --reconcile-interval-seconds 60
+Late PUBLISH ignored without additional cache fetch.
 
-Real UNSUBACK was confirmed.
+The other tracked GameId, 76557634, continued receiving updates.
 
-A late PUBLISH was ignored without an additional cache fetch.
-
-The other tracked GameId, 76557634, continued receiving updates and produced 292 real price changes.
-
-This provides real-network evidence of the terminal transition, final snapshot preservation, unsubscribe, and cross-game isolation.
+292 real price changes were observed for that other game.
 
 IMPORTANT:
 
-Status=3, BetStatus=0, EventStatus=40 is verified for Soccer.
+The terminal status combination is verified for Soccer.
 
-Do not assume the combination applies to every sport.
+Do not assume it applies identically to every sport.
 
-A temporary betting suspension must not be interpreted as match completion.
+Temporary betting suspension does not mean match completion.
 
-Disappearance from live discovery does not automatically mean the match has ended.
+Disappearance from live discovery does not automatically mean match completion.
 
-## Remaining Phase 4D limitations
+Remaining real-network gaps:
 
-The following are UNIT-TESTED but not REAL-NETWORK VERIFIED:
+- Disappearance-to-UNKNOWN handling.
+- Reconnect with mixed active/finalized games.
 
-- A tracked game disappearing from live discovery and entering UNKNOWN handling.
-- Reconnecting with a mixture of active and finalized games.
-- Skipping finalized games on a real reconnect.
+These were unit-tested.
 
-Do not erase these distinctions in future summaries.
+Historical baseline:
 
-Latest reported test baseline:
+277 tests passed.
 
-277 passed.
+---
 
-All touched files passed Ruff.
+# 9. Phase 5A — Prematch-to-Live Observation
 
-Previous repository-wide baseline:
+COMPLETED.
+
+Diagnostic executable:
+
+observe_prematch_to_live.py
+
+Two real Champions League fixtures were observed transitioning:
+
+GameId=76553416
+GameId=76553419
+
+Both retained the exact same GameId.
+
+No fuzzy/team-name matching was required.
+
+One fixture appeared in live discovery approximately 29 seconds before disappearing from prematch discovery.
+
+The other transition fell within one 30-second polling interval.
+
+Therefore, prematch and live representations can overlap.
+
+Live snapshots are independently initialized.
+
+Prematch state must not be copied as authoritative live state.
+
+Market/selection ID stability across the transition remains NOT VERIFIED.
+
+A real UNSUBACK failure occurred because the connection closed before acknowledgment.
+
+The existing tolerant failure path handled it.
+
+Historical baseline:
+
+287 tests passed.
+
+---
+
+# 10. Phase 5B — Automatic Prematch-to-Live Handoff
+
+COMPLETED.
+
+This is the most recently completed development phase.
+
+New coordinator:
+
+mystake/pipeline/prematch_to_live_handoff.py
+
+New executable:
+
+watch_prematch_to_live.py
+
+New tests:
+
+tests/pipeline/test_prematch_to_live_handoff.py
+
+tests/test_watch_prematch_to_live.py
+
+Modified components included:
+
+mystake/registry/live_game_registry.py
+
+mystake/sources/mqtt/client.py
+
+docs/product/SCHEMA.md
+
+State machine:
+
+PREMATCH_TRACKING
+    ↓
+LIVE_HANDED_OFF
+    ↓
+PREMATCH_CLEANED_UP
+
+The coordinator reuses existing discovery, registry, dispatcher and tracker components.
+
+Exact GameId equality is the transition detection key.
+
+No fuzzy matching.
+
+No copied prematch snapshot.
+
+Live state is initialized independently.
+
+## Real network command
+
+uv run python -u watch_prematch_to_live.py --sport Soccer --lookahead-minutes 5 --max-candidates 3 --observe-seconds 900 --tick-interval-seconds 15
+
+## Actual handoff GameIds
+
+76367481
+
+76514936
+
+76591312
+
+All were Soccer fixtures in:
+
+Africa Cup Of Nations, Qualification, Group Stage.
+
+The run printed numeric team IDs rather than resolved team names.
+
+Do not invent team names.
+
+Raw team IDs:
+
+76367481:
+15205 vs 15156
+
+76514936:
+15210 vs 15211
+
+76591312:
+15207 vs 15158
+
+## Real handoff evidence
+
+The existing log was:
+
+/tmp/watch_p2l_run.log
+
+This was the source of the evidence addendum.
+
+The log may no longer exist in a future session.
+
+The historical evidence is preserved here.
+
+Live discovery detection:
+
+16:00:04.593
+
+All three GameIds appeared in the same discovery refresh.
+
+First subscription:
+
+GameId=76367481
+
+SUBSCRIBE log:
+16:00:04.593
+
+SUBACK:
+16:00:29.462
+
+Initial live snapshot:
+16:00:30.007
+
+Second subscription:
+
+GameId=76514936
+
+SUBSCRIBE:
+16:00:29.462
+
+SUBACK:
+16:00:29.711
+
+Initial snapshot:
+16:00:30.278
+
+Third subscription:
+
+GameId=76591312
+
+SUBSCRIBE:
+16:00:29.711
+
+SUBACK:
+16:00:29.959
+
+Initial snapshot:
+16:00:30.543
+
+Prematch removal observed:
+
+16:00:45.739
+
+Prematch cleanup:
+
+16:00:47.574
+
+Continued live updates after cleanup:
+
+76367481:
+16:00:49.652
+16:00:55.813
+
+76514936:
+16:00:59.967
+16:01:00.671
+16:01:01.487
+
+76591312:
+No additional update observed after its initial snapshot.
+
+Therefore:
+
+3/3 automatic handoffs verified.
+3/3 successful SUBACKs.
+3/3 initial live snapshots.
+3/3 prematch cleanup.
+2/3 observed additional live updates after cleanup.
+
+Do not claim the third game received post-cleanup changes.
+
+## Snapshot counts
+
+Prematch:
+
+76367481:
+71 markets / 365 selections.
+
+76514936:
+71 markets / 365 selections.
+
+76591312:
+70 markets / 365 selections.
+
+Live:
+
+76367481:
+62 markets / 357 selections.
+
+76514936:
+78 markets / 415 selections.
+
+76591312:
+77 markets / 412 selections.
+
+Counts differed in every case.
+
+Market/selection ID-set stability was not directly compared.
+
+Do not infer stable or unstable IDs from counts alone.
+
+## Duplicate prevention
+
+Each GameId showed:
+
+handoff_attempts=1.
+
+Exactly one SUBSCRIBE log entry per GameId.
+
+No retry path was triggered in this real run.
+
+Retry behavior remains unit-tested only.
+
+## Shutdown
+
+Real SIGINT shutdown succeeded cleanly.
+
+No reconnect after shutdown.
+
+## Tests
+
+306 passed.
+
+Previous baseline:
+
+287 passed.
+
+19 additional tests.
+
+Repo-wide Ruff baseline:
 
 27 lint errors.
 14 unformatted files.
 
-These were reported as pre-existing.
+Touched files were clean.
 
 ---
 
-# 9. Important Git observation
+# 11. Critical discovery — MQTT I/O latency
 
-During Phase 4D, Claude Code noticed automatic commits named "Handoff" in git log.
+Phase 5B revealed a potential MQTT threading/locking issue.
 
-Claude reported that it did not manually run git commit.
+Observed first subscription:
 
-The actual source of these commits is UNKNOWN.
+SUBSCRIBE log:
+16:00:04.593
 
-Potential areas to inspect:
+SUBACK:
+16:00:29.462
 
-- Git hooks.
-- core.hooksPath.
-- Claude Code settings/hooks.
-- Existing agent integrations.
-- Repository automation.
+Elapsed:
+Approximately 24.9 seconds.
 
-Do not assume the cause.
+Subsequent two subscriptions completed in approximately 250 ms each.
 
-Do not automatically delete commits, rewrite history, or disable hooks.
+The current code reportedly contains:
 
-The next Phase 5A task includes a read-only investigation of this behavior.
+def _ws_send(self, ws, packet):
+    with self._io_lock:
+        ws.send_binary(packet)
+
+def _ws_recv(self, ws):
+    with self._io_lock:
+        return ws.recv()
+
+The lock is scoped to individual physical socket operations.
+
+It is not held around the entire receive_publish() loop.
+
+However, a blocking ws.recv() can hold it while waiting for data.
+
+The socket read timeout was reported as approximately 30 seconds.
+
+The background subscription thread may therefore wait while the main receiver holds the lock.
+
+IMPORTANT DISTINCTION:
+
+The first SUBSCRIBE log entry may occur before the actual socket send.
+
+The 24.9 seconds is the interval between the logged subscription request and SUBACK.
+
+It is not a verified 24.9-second network transmission delay.
+
+The actual root cause has not been independently isolated.
+
+The lock prevents simultaneous ws.recv() calls if all reads pass through _ws_recv.
+
+However, mutual exclusion alone does not prove correct packet routing between competing readers.
+
+Potential concerns to investigate:
+
+- Lock acquisition delays.
+- Blocking receive.
+- Thread starvation.
+- SUBACK ownership.
+- PUBLISH preservation.
+- Packet-ID correlation.
+- Concurrent subscribe/receive behavior.
+- Unsubscribe behavior.
+- Reconnect and shutdown behavior.
+
+Do not claim that _io_lock is definitively responsible until measured.
+
+This is the main target of Phase 5C.
 
 ---
 
-# 10. Current known executable files
+# 12. Timestamp uncertainty
 
-Known from previous reports:
+Phase 5B evidence showed:
+
+Scheduled kickoff:
+13:00
+
+Local-looking log timestamps:
+Approximately 16:00
+
+The addendum labeled the log timeline UTC.
+
+The exact timestamp configuration was not established.
+
+A three-hour timezone offset is plausible, but not proven by the report alone.
+
+Distinguish:
+
+Provider UTC timestamps.
+Python process-local timestamps.
+Actual UTC timestamps.
+Monotonic elapsed durations.
+
+Do not silently compare these as if they are the same clock representation.
+
+Phase 5C includes timestamp verification.
+
+---
+
+# 13. Git Handoff commits
+
+Previous sessions observed unexpected commits named:
+
+Handoff
+
+The agent reported it never manually ran git commit.
+
+An investigation found:
+
+No applicable repository hook.
+No core.hooksPath.
+No cron/launchd job.
+
+A commit reportedly appeared during investigation without an explicit git commit invocation by that agent.
+
+Possible explanations include:
+
+- IDE integration.
+- Another human session.
+- Another agent session.
+- Other external automation.
+
+The actual source remains UNKNOWN.
+
+Do not claim JetBrains is responsible without evidence.
+
+Do not delete or rewrite commits.
+
+Do not modify hooks or IDE settings without a concrete reason.
+
+Future Claude prompts should instruct the agent not to commit automatically.
+
+---
+
+# 14. Current known project components
+
+Executables:
 
 main.py
+
 discover_fixtures.py
+
 watch_prematch_header.py
+
 watch_prematch_odds.py
+
 observe_and_verify_tracked_odds.py
+
 observe_live_match.py
+
 watch_live_odds.py
 
-The actual current repository is authoritative.
+observe_prematch_to_live.py
 
-Do not invent filenames or method signatures.
+watch_prematch_to_live.py
 
-Do not assume an experimental script from an older ZIP represents the current implementation.
+Core components:
+
+MystakeMqttClient.
+
+MystakeHttpClient.
+
+MystakeCacheClient.
+
+NotificationProcessor.
+
+PrematchFixtureDiscovery.
+
+LiveFixtureDiscovery.
+
+PrematchHeaderRefreshHandler.
+
+PrematchSnapshotHydrator.
+
+PrematchOddsTracker.
+
+PrematchGamesRevalidationHandler.
+
+GameSnapshotRegistry.
+
+FixtureRegistry.
+
+LiveGameRegistry.
+
+LiveOddsDispatcher.
+
+PrematchToLiveHandoffCoordinator.
+
+diff_prematch_snapshots().
+
+diff_live_snapshots().
+
+map_live_diff_to_events().
+
+Market/selection enrichment.
+
+The actual repository is authoritative.
+
+Do not invent method signatures or assume historical files are unchanged.
 
 ---
 
-# 11. What we can currently collect
-
-Based on the latest Claude Code reports:
+# 15. Current capabilities
 
 PREMATCH:
 
 - Fixture discovery.
-- Market/selection/odds snapshots.
-- Real odds changes.
+- Authoritative market/selection/odds snapshots.
+- Real odds-change detection.
 - MQTT-triggered revalidation.
 
 LIVE:
 
 - Fixture discovery.
-- Multiple simultaneous live games.
-- Independent per-game state.
-- Market names.
-- Selection names.
+- Multiple simultaneously tracked matches.
+- Exact MQTT subscription.
+- Independent per-game snapshots.
+- Market and selection names.
 - Line values.
 - Real odds changes.
-- Scores and match time.
-- Market/selection changes.
+- Score updates.
+- Match clock.
+- Match status.
 - Match-end detection.
 - Final snapshot preservation.
-- MQTT subscription cleanup.
+- Subscription cleanup.
 
-Real multi-game tracking has been verified.
+CROSS-PHASE:
 
-Real Soccer match-end and unsubscribe have been verified.
+- Same-GameId prematch-to-live detection.
+- Automatic live subscription.
+- Independent live initialization.
+- Prematch cleanup.
+- Continued live updates.
+- Duplicate handoff prevention.
 
-These statements come from Claude Code reports; ChatGPT has not independently inspected the user's current Mac repository.
+These capabilities are based on previous Claude Code reports and real-network log excerpts.
+
+The current ChatGPT session has not independently inspected the user's Mac repository.
 
 ---
 
-# 12. Current task — Phase 5A
+# 16. Current task — Phase 5C
 
 STATUS:
 
-Prompt prepared.
+NOT YET COMPLETED.
 
-The user is about to clear Claude Code's context and execute it.
+The user is clearing Claude Code context and starting Phase 5C.
 
-Do not assume Phase 5A is complete.
+Title:
 
-Phase 5A title:
+MQTT I/O Reliability & Subscription Latency.
 
-Real Prematch-to-Live Transition Observation.
+Objective:
 
-PRIMARY QUESTION:
+Investigate and correct the actual cause of the observed subscription delay and any unsafe MQTT socket/packet ownership behavior.
 
-Does a real MyStake match retain its GameId when moving from prematch to live?
+The Phase 5C prompt instructs Claude Code to:
 
-We do not know yet.
+1. Inspect the existing MQTT client.
+2. Understand thread and socket ownership.
+3. Instrument request, lock acquisition, actual send and SUBACK timestamps.
+4. Determine the real cause of the approximately 24.9-second interval.
+5. Implement only the necessary fix.
+6. Preserve SUBACK and PUBLISH delivery.
+7. Preserve unsubscribe/reconnect/shutdown behavior.
+8. Run deterministic concurrency tests.
+9. Run bounded real-network verification.
+10. Ensure Phase 5B compatibility.
 
-Do not guess.
+Do not assume Phase 5C has been completed.
 
-Phase 5A must observe an actual upcoming fixture and compare both discovery systems.
+Wait for the user's Phase 5C report.
 
-Prematch source:
-
-sport/getheader/en
-
-Live source:
-
-live/headernew/en
-
-The task must determine:
-
-1. Actual prematch GameId.
-2. Actual live GameId.
-3. Whether identity is preserved.
-4. Whether explicit cross-references exist.
-5. Whether prematch/live discovery overlap.
-6. Whether a gap exists during transition.
-7. Whether market and selection IDs remain stable.
-8. Whether the first live snapshot must be initialized independently.
-9. What happens to prematch tracking.
-10. What architecture is actually needed for automatic transition.
-
-Prefer Soccer initially.
-
-Select 1–3 real upcoming fixtures.
-
-Observe the actual scheduled kickoff period.
-
-Use bounded real-network execution.
-
-A diagnostic script may be introduced:
-
-observe_prematch_to_live.py
-
-However, the actual repository should determine its implementation and CLI.
-
-Do not create a speculative transition manager before identifying real protocol behavior.
-
-Do not match fixtures authoritatively using only fuzzy team-name matching.
-
-If multiple candidate records match, retain ambiguity.
-
-If no transition occurs in the observation window, report NOT VERIFIED.
-
-Do not fabricate a transition or run indefinitely.
-
-The task must produce a Phase 5A final report.
+Do not launch Phase 6 automatically.
 
 ---
 
-# 13. Phase 5B — Planned, not started
+# 17. How to evaluate the Phase 5C report
 
-Phase 5B will implement reliable automatic transition based on Phase 5A evidence.
-
-Possible concerns:
-
-- Prematch tracking ownership.
-- Live tracking ownership.
-- Identity mapping.
-- Initial live hydration.
-- Duplicate subscription prevention.
-- Per-game state preservation.
-- Stale in-flight responses.
-- Registry handoff.
-- Reconnect handling.
-- Safe cleanup.
-
-Do not design the exact solution until Phase 5A results are available.
-
-If GameId is preserved, an explicit cross-ID mapping may not be necessary.
-
-If GameId changes, the mapping strategy must be based on real provider evidence.
-
-Do not merge fixtures merely because team names look similar.
-
----
-
-# 14. Other known unresolved areas
-
-These are not all immediate tasks:
-
-- Cross-sport terminal-state semantics.
-- Real reconnect with active/finalized games.
-- Real disappearance-from-discovery behavior.
-- Live market-name template substitution.
-- Prematch market-name enrichment.
-- Prematch DeleteList semantics.
-- Prematch UpdateTimeStamp exact semantics.
-- Long-running soak tests.
-- Dynamic all-sports tracking.
-- Coverage metrics.
-- Persistence.
-- Multi-instance orchestration.
-
-Do not combine all these into the next development phase.
-
----
-
-# 15. How to review future Claude Code reports
-
-When the user returns with the Phase 5A final report:
+When the user returns with Claude Code results:
 
 First provide a concise Turkish executive summary.
 
 Then examine:
 
-- Did Claude run actual Python?
-- Which actual fixtures were selected?
-- Were their start times verified?
-- Was prematch discovery observed?
-- Was live discovery observed?
-- Was a real transition captured?
-- Is the GameId relationship supported by actual data?
-- Are market/selection identities stable or different?
-- Were there discovery gaps or overlaps?
-- Were status and timestamp fields inspected?
-- Did Claude avoid speculative identity matching?
-- What did the Git Handoff investigation find?
-- What passed in pytest and Ruff?
-- What is still NOT VERIFIED?
+1. What actual root cause was identified?
+2. Was the physical packet-send timestamp measured?
+3. How long did lock acquisition take?
+4. How long did the actual SUBACK wait take?
+5. Does the design guarantee correct packet ownership?
+6. Can PUBLISH arrive while subscribe awaits SUBACK?
+7. Can SUBACK be consumed or lost by the wrong code path?
+8. Can subscribe starve behind blocking receive?
+9. Were actual dynamic subscriptions tested?
+10. Did real PUBLISH updates continue?
+11. Did Phase 5B integration tests pass?
+12. Were reconnect and shutdown preserved?
+13. What was unit-tested versus real-network verified?
+14. Did pytest and Ruff pass?
+15. What remains NOT VERIFIED?
 
-Do not accept a claimed transition without actual supporting observations.
+Do not accept a latency improvement based solely on one lucky fast subscription.
 
-If no real transition was captured, do not ask Claude to rewrite the existing collectors.
+Do not request a complete MQTT client rewrite unless the actual evidence supports it.
 
-Instead, identify the smallest targeted next observation.
+If a specific failure remains, prepare one targeted follow-up task.
 
-If a transition was verified, use its findings to prepare Phase 5B.
-
-Do not automatically start Phase 5B without evaluating the report.
+If Phase 5C passes, close it before planning Phase 6A.
 
 ---
 
-# 16. User preferences and collaboration style
+# 18. Planned Phase 6A
 
-The user has approximately 16 years of software development experience, mainly in Java and Spring Boot.
+NOT STARTED.
 
-The user is learning Python through this actual project.
+Proposed title:
 
-When explaining code, comparisons can include:
+Long-Running Collector Reliability & Soak Test.
+
+The current collector has mostly been tested through bounded observations lasting approximately 90–900 seconds.
+
+The next objective will be to evaluate longer-running behavior.
+
+Potential measurements:
+
+- Connection stability.
+- Real reconnect.
+- Resubscription.
+- MQTT notification continuity.
+- Subscription counts.
+- Duplicate subscriptions.
+- Registry growth.
+- Memory usage.
+- Snapshot freshness.
+- Stale in-flight responses.
+- Fixture cleanup.
+- Lifecycle transitions.
+- Error rates.
+- Shutdown behavior.
+
+Phase 6A should begin with observation and measurement rather than speculative new infrastructure.
+
+Do not implement Redis, Kafka, RabbitMQ, persistence or multi-instance orchestration simply because the project reaches Phase 6.
+
+Use real findings to determine what needs improvement.
+
+---
+
+# 19. Remaining unresolved topics
+
+These are known gaps, not simultaneous development tasks:
+
+- Exact prematch DeleteList semantics.
+- Exact UpdateTimeStamp semantics.
+- Market/selection ID stability across transition.
+- Prematch market-name enrichment.
+- Live market template substitution.
+- Cross-sport terminal-state semantics.
+- Real reconnect with mixed active/finalized games.
+- Real discovery disappearance handling.
+- Mid-transition reconnect.
+- Failed-subscribe retry on real network.
+- Empty prematch full snapshot near kickoff.
+- MQTT subscription latency root cause.
+- Long-running memory and registry behavior.
+- All-sports dynamic coverage.
+- Persistence.
+- Multi-instance orchestration.
+
+Do not combine these into one large implementation phase.
+
+---
+
+# 20. Collaboration preferences
+
+The user has approximately 16 years of professional software development experience, primarily with Java/Spring Boot.
+
+The user is learning Python through the MyStake project.
+
+Useful conceptual comparisons:
 
 Python dataclass ≈ Java record/POJO.
 Python dict ≈ Java Map.
@@ -893,26 +1224,30 @@ Python None ≈ Java null.
 pytest ≈ JUnit.
 Python __init__ ≈ Java constructor.
 
-Do not write unnecessary beginner-level programming lessons.
+Do not provide unnecessary beginner-level programming courses.
 
-Focus on practical understanding of the existing Python code.
+Prefer short explanations using the current project.
 
 The user values:
 
-- Short, direct explanations.
-- One development phase at a time.
-- English Claude Code prompts.
-- Real terminal output.
+- Real Python execution.
+- Actual terminal output.
 - Actual JSON.
-- Actual network validation.
-- Explicit unknowns.
+- Correct protocol understanding.
+- One development phase at a time.
 - Minimal changes to working code.
+- Explicit unknowns.
+- English prompts for Claude Code.
+- Independent evaluation of Claude reports.
+- Avoiding endless speculative test cycles.
 
-The user does not want endless speculative development or inflated test counts without network evidence.
+When the user asks for a Claude Code prompt, provide an actionable prompt based on the current phase and known evidence.
+
+When the user asks whether to clear context, remember that /clear removes conversation context, not project files.
 
 ---
 
-# 17. Most important current summary
+# 21. Final current-state summary
 
 As of September 25, 2026:
 
@@ -926,35 +1261,53 @@ Phase 4A: COMPLETE.
 Phase 4B: COMPLETE.
 Phase 4C: COMPLETE.
 Phase 4D: COMPLETE.
+Phase 5A: COMPLETE.
+Phase 5B: COMPLETE.
 
 Latest reported tests:
 
-277 passed.
+306 passed.
 
-Actual prematch odds changes:
-
-VERIFIED.
-
-Actual multi-game live odds changes:
+Real prematch odds changes:
 
 VERIFIED.
 
-Actual human-readable live market/selection enrichment:
+Real multi-game live odds changes:
 
 VERIFIED.
 
-Actual Soccer match-end transition and MQTT unsubscribe:
+Real live market/selection enrichment:
 
 VERIFIED.
 
-Prematch-to-live transition:
+Real Soccer match-end and MQTT unsubscribe:
 
-NOT YET VERIFIED.
+VERIFIED.
+
+Real prematch-to-live transition:
+
+VERIFIED.
+
+Real automatic handoff:
+
+VERIFIED FOR THREE GAME IDS.
+
+Real additional live updates after handoff:
+
+OBSERVED FOR TWO OF THREE GAME IDS.
+
+Current unresolved engineering concern:
+
+MQTT I/O concurrency and subscription latency.
 
 CURRENT TASK:
 
-PHASE 5A — REAL PREMATCH-TO-LIVE TRANSITION OBSERVATION.
+PHASE 5C — MQTT I/O RELIABILITY & SUBSCRIPTION LATENCY.
+
+Phase 5C is not yet complete.
+
+The next ChatGPT response should evaluate the Phase 5C report when the user provides it.
 
 Do not restart completed phases.
 
-Wait for the user's Phase 5A Claude Code report, analyze its real evidence, and continue from there.
+Do not automatically start Phase 6.
