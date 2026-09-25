@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 
@@ -7,7 +8,7 @@ def coerce_float(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, Decimal)):
         return float(value)
 
     if isinstance(value, str):

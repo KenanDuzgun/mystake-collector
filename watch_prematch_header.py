@@ -16,6 +16,7 @@ any fixture - prematch fixture discovery refresh only (Phase 2B scope).
 """
 
 import logging
+import signal
 
 from mystake.config import MQTT_TOPIC_PREMATCH_HEADER
 from mystake.pipeline.notification_processor import NotificationProcessor
@@ -26,7 +27,7 @@ from mystake.pipeline.prematch_discovery import (
 from mystake.registry.fixture_registry import FixtureRegistryDiff
 from mystake.sources.cache.client import MystakeCacheClient
 from mystake.sources.http.client import MystakeHttpClient
-from mystake.sources.mqtt.client import MystakeMqttClient
+from mystake.sources.mqtt.client import ListenerShutdown, MystakeMqttClient
 
 logger = logging.getLogger(__name__)
 
@@ -121,28 +122,25 @@ def run(
         log_reconciliation(diff, context="Header refresh")
 
 
-def main() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-    )
-
-    mqtt_client = MystakeMqttClient()
-    http_client = MystakeHttpClient()
-    cache_client = MystakeCacheClient()
-
-    discovery = PrematchFixtureDiscovery(http_client=http_client)
-    notification_processor = NotificationProcessor(cache_client=cache_client)
-    handler = PrematchHeaderRefreshHandler(
-        discovery=discovery,
-        notification_processor=notification_processor,
-    )
-
+def serve(
+    mqtt_client: MystakeMqttClient,
+    handler: PrematchHeaderRefreshHandler,
+    http_client: MystakeHttpClient,
+    cache_client: MystakeCacheClient,
+) -> None:
+    """
+    Run the listener and guarantee resource cleanup on shutdown,
+    whether that shutdown is a Ctrl+C, or an unhandled error (e.g. a
+    rejected subscription) that must not be silently swallowed.
+    """
     try:
         run(mqtt_client, handler)
 
-    except KeyboardInterrupt:
-        logger.info("Listener stopping (KeyboardInterrupt)")
+    except (KeyboardInterrupt, ListenerShutdown) as exc:
+        logger.info(
+            "Listener stopping (%s)",
+            type(exc).__name__,
+        )
 
     except Exception:
         logger.exception("Listener stopping due to an unhandled error")
@@ -153,6 +151,66 @@ def main() -> None:
         http_client.close()
         cache_client.close()
         logger.info("Listener stopped; resources closed")
+
+
+def install_shutdown_signal_handlers(
+    mqtt_client: MystakeMqttClient,
+) -> None:
+    """
+    SIGINT and SIGTERM both request a graceful shutdown by calling
+    `mqtt_client.request_shutdown()` only - the handler itself does not
+    raise.
+
+    `request_shutdown()` sets a flag and force-closes the raw MQTT
+    socket; `MystakeMqttClient` then surfaces `ListenerShutdown` itself
+    from a controlled checkpoint (top of `receive_publish`, or its own
+    `except ConnectionError` handling once the forced socket closure is
+    observed). Raising directly from the signal handler was deliberately
+    avoided: if the signal lands while a notification-triggered
+    `getheader/en` refresh is in flight, an exception raised there would
+    be caught and swallowed by `PrematchFixtureDiscovery.refresh()`'s
+    broad `except Exception` (by design, to preserve registry state on
+    HTTP/parse failures - see AGENTS.md section 5), silently discarding
+    the shutdown request instead of stopping the listener.
+
+    Python's default SIGINT handling (raise KeyboardInterrupt) is
+    replaced so `request_shutdown()` runs on Ctrl+C too. SIGTERM
+    previously had no handler at all, so it terminated the process
+    immediately without running any cleanup.
+    """
+
+    def handle_shutdown_signal(signum: int, frame: object) -> None:
+        logger.info(
+            "Received signal=%s; requesting listener shutdown",
+            signal.Signals(signum).name,
+        )
+
+        mqtt_client.request_shutdown()
+
+    signal.signal(signal.SIGINT, handle_shutdown_signal)
+    signal.signal(signal.SIGTERM, handle_shutdown_signal)
+
+
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+    )
+
+    mqtt_client = MystakeMqttClient()
+    http_client = MystakeHttpClient()
+    cache_client = MystakeCacheClient()
+
+    install_shutdown_signal_handlers(mqtt_client)
+
+    discovery = PrematchFixtureDiscovery(http_client=http_client)
+    notification_processor = NotificationProcessor(cache_client=cache_client)
+    handler = PrematchHeaderRefreshHandler(
+        discovery=discovery,
+        notification_processor=notification_processor,
+    )
+
+    serve(mqtt_client, handler, http_client, cache_client)
 
 
 if __name__ == "__main__":

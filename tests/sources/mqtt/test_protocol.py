@@ -38,29 +38,21 @@ def test_build_connect_packet_matches_browser_structure() -> None:
 
 
 def test_successful_connack() -> None:
-    assert is_successful_connack(
-        b"\x20\x02\x00\x00"
-    )
+    assert is_successful_connack(b"\x20\x02\x00\x00")
 
 
 def test_rejected_connack_is_not_successful() -> None:
-    assert not is_successful_connack(
-        b"\x20\x02\x00\x05"
-    )
+    assert not is_successful_connack(b"\x20\x02\x00\x05")
 
 
 def test_build_pingreq_packet() -> None:
-    assert build_pingreq_packet() == b"\xC0\x00"
+    assert build_pingreq_packet() == b"\xc0\x00"
 
 
 def test_pingresp_detection() -> None:
-    assert is_pingresp(
-        b"\xD0\x00"
-    )
+    assert is_pingresp(b"\xd0\x00")
 
-    assert not is_pingresp(
-        b"\xC0\x00"
-    )
+    assert not is_pingresp(b"\xc0\x00")
 
 
 def test_build_unsubscribe_packet() -> None:
@@ -104,14 +96,14 @@ def test_build_unsubscribe_packet_rejects_too_large_packet_id() -> None:
 
 def test_successful_unsuback() -> None:
     assert is_successful_unsuback(
-        packet=b"\xB0\x02\x00\x02",
+        packet=b"\xb0\x02\x00\x02",
         expected_packet_id=2,
     )
 
 
 def test_unsuback_wrong_packet_id_is_not_successful() -> None:
     assert not is_successful_unsuback(
-        packet=b"\xB0\x02\x00\x03",
+        packet=b"\xb0\x02\x00\x03",
         expected_packet_id=2,
     )
 
@@ -125,6 +117,6 @@ def test_unsuback_wrong_packet_type_is_not_successful() -> None:
 
 def test_unsuback_wrong_remaining_length_is_not_successful() -> None:
     assert not is_successful_unsuback(
-        packet=b"\xB0\x03\x00\x02",
+        packet=b"\xb0\x03\x00\x02",
         expected_packet_id=2,
     )

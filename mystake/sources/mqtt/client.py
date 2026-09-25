@@ -1,9 +1,11 @@
-from collections import deque
-from collections.abc import Callable
 import logging
 import random
+import socket
 import ssl
+import threading
 import time
+from collections import deque
+from collections.abc import Callable
 
 import websocket
 
@@ -28,8 +30,16 @@ from mystake.sources.mqtt.protocol import (
     parse_publish_packet,
 )
 
-
 logger = logging.getLogger(__name__)
+
+
+class ListenerShutdown(Exception):
+    """
+    Raised out of `receive_publish`/`connect_with_retry`/reconnect loops
+    once `request_shutdown()` has been called, so a caller (e.g. a
+    signal handler-driven listener) unwinds instead of retrying or
+    reconnecting.
+    """
 
 
 class MystakeMqttClient:
@@ -53,14 +63,75 @@ class MystakeMqttClient:
 
         self._pending_packets: deque[bytes] = deque()
 
+        self._shutdown_event = threading.Event()
+
+    @property
+    def shutdown_requested(self) -> bool:
+        return self._shutdown_event.is_set()
+
+    def request_shutdown(self) -> None:
+        """
+        Idempotent. Signals every retry/receive loop to stop and forces
+        any currently- or soon-to-be-blocked `recv()` to fail fast
+        instead of blocking again or reconnecting.
+
+        A plain flag is not enough on its own: a blocked read may not
+        return until data arrives or a read-timeout elapses. Forcibly
+        shutting down the raw socket (not the WebSocket-level graceful
+        `close()`, which itself sends a CLOSE frame and blocks waiting
+        for the peer's reply) makes any in-flight or retried `recv()`
+        on that socket return immediately with an OS-level error,
+        regardless of which layer (raw socket, TLS, the `selectors`
+        retry loop in the `websocket` library) it is blocked in.
+        """
+        self._shutdown_event.set()
+
+        ws = self.websocket
+
+        if ws is None:
+            return
+
+        sock = getattr(ws, "sock", None)
+
+        if sock is None:
+            return
+
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+
+        except OSError:
+            logger.debug(
+                "MQTT socket shutdown() during request_shutdown() "
+                "raised (socket likely already closed)",
+                exc_info=True,
+            )
+
+    def _raise_if_shutdown_requested(self) -> None:
+        if self._shutdown_event.is_set():
+            raise ListenerShutdown("Shutdown requested")
+
+    def _wait_or_raise_if_shutdown(
+        self,
+        seconds: float,
+    ) -> None:
+        if self._shutdown_event.wait(seconds):
+            raise ListenerShutdown("Shutdown requested during MQTT retry backoff")
+
     def receive_publish(
         self,
     ) -> MqttPublishMessage:
         while True:
+            self._raise_if_shutdown_requested()
+
             try:
                 packet = self.receive_raw()
 
             except ConnectionError as exc:
+                if self._shutdown_event.is_set():
+                    raise ListenerShutdown(
+                        "Shutdown requested while MQTT connection was lost"
+                    ) from exc
+
                 logger.warning(
                     "MQTT connection lost: %s",
                     exc,
@@ -73,21 +144,16 @@ class MystakeMqttClient:
                 self._awaiting_pingresp = False
                 self._last_pingreq_at = None
 
-                logger.info(
-                    "MQTT PINGRESP received"
-                )
+                logger.info("MQTT PINGRESP received")
                 continue
 
             packet_type = packet[0] >> 4
 
             if packet_type == 3:
-                return parse_publish_packet(
-                    packet
-                )
+                return parse_publish_packet(packet)
 
             logger.debug(
-                "Ignoring non-PUBLISH MQTT packet "
-                "type=%s raw=%s",
+                "Ignoring non-PUBLISH MQTT packet type=%s raw=%s",
                 packet_type,
                 packet.hex(" "),
             )
@@ -100,9 +166,7 @@ class MystakeMqttClient:
 
         ws = websocket.create_connection(
             MQTT_WEBSOCKET_URL,
-            subprotocols=[
-                MQTT_WEBSOCKET_SUBPROTOCOL
-            ],
+            subprotocols=[MQTT_WEBSOCKET_SUBPROTOCOL],
             timeout=10,
             sslopt={
                 "cert_reqs": ssl.CERT_REQUIRED,
@@ -112,60 +176,41 @@ class MystakeMqttClient:
         self.websocket = ws
 
         logger.info(
-            "WebSocket connected. "
-            "subprotocol=%s client_id=%s",
+            "WebSocket connected. subprotocol=%s client_id=%s",
             ws.getsubprotocol(),
             self.client_id,
         )
 
-        connect_packet = build_connect_packet(
-            self.client_id
-        )
+        connect_packet = build_connect_packet(self.client_id)
 
-        ws.send_binary(
-            connect_packet
-        )
+        ws.send_binary(connect_packet)
 
         response = ws.recv()
 
         if response == "":
-            raise ConnectionError(
-                "MQTT WebSocket closed during CONNACK"
-            )
+            raise ConnectionError("MQTT WebSocket closed during CONNACK")
 
         if isinstance(response, str):
             raise RuntimeError(
-                "Expected binary MQTT CONNACK, "
-                f"received text: {response}"
+                f"Expected binary MQTT CONNACK, received text: {response}"
             )
 
-        if not is_successful_connack(
-            response
-        ):
+        if not is_successful_connack(response):
             raise RuntimeError(
-                "MQTT CONNECT rejected or "
-                "unexpected response: "
-                f"{response.hex(' ')}"
+                f"MQTT CONNECT rejected or unexpected response: {response.hex(' ')}"
             )
 
-        logger.info(
-            "MQTT CONNACK accepted"
-        )
+        logger.info("MQTT CONNACK accepted")
 
-        read_timeout = (
-            MQTT_KEEP_ALIVE_SECONDS / 2
-        )
+        read_timeout = MQTT_KEEP_ALIVE_SECONDS / 2
 
-        ws.settimeout(
-            read_timeout
-        )
+        ws.settimeout(read_timeout)
 
         self._awaiting_pingresp = False
         self._last_pingreq_at = None
 
         logger.info(
-            "MQTT keepalive enabled "
-            "keep_alive=%ss read_timeout=%.1fs",
+            "MQTT keepalive enabled keep_alive=%ss read_timeout=%.1fs",
             MQTT_KEEP_ALIVE_SECONDS,
             read_timeout,
         )
@@ -174,30 +219,25 @@ class MystakeMqttClient:
         delay = self.reconnect_initial_delay
 
         while True:
+            self._raise_if_shutdown_requested()
+
             try:
                 self.connect()
                 return
 
             except Exception:
-                logger.exception(
-                    "MQTT connection failed"
-                )
+                logger.exception("MQTT connection failed")
 
                 self.close()
 
-                sleep_seconds = self._retry_sleep_seconds(
-                    delay
-                )
+                sleep_seconds = self._retry_sleep_seconds(delay)
 
                 logger.warning(
-                    "Retrying MQTT connection "
-                    "in %.2f seconds",
+                    "Retrying MQTT connection in %.2f seconds",
                     sleep_seconds,
                 )
 
-                time.sleep(
-                    sleep_seconds
-                )
+                self._wait_or_raise_if_shutdown(sleep_seconds)
 
                 delay = min(
                     delay * 2,
@@ -248,25 +288,17 @@ class MystakeMqttClient:
                 continue
 
             except websocket.WebSocketConnectionClosedException as exc:
-                raise ConnectionError(
-                    "MQTT WebSocket connection closed"
-                ) from exc
+                raise ConnectionError("MQTT WebSocket connection closed") from exc
 
             except OSError as exc:
-                raise ConnectionError(
-                    "MQTT WebSocket network error"
-                ) from exc
+                raise ConnectionError("MQTT WebSocket network error") from exc
 
             if message == "":
-                raise ConnectionError(
-                    "MQTT WebSocket connection "
-                    "closed by remote peer"
-                )
+                raise ConnectionError("MQTT WebSocket connection closed by remote peer")
 
             if isinstance(message, str):
                 raise RuntimeError(
-                    "Expected binary MQTT message, "
-                    f"received text: {message}"
+                    f"Expected binary MQTT message, received text: {message}"
                 )
 
             return message
@@ -275,16 +307,12 @@ class MystakeMqttClient:
         self,
         on_message: Callable[[bytes], None],
     ) -> None:
-        logger.info(
-            "MQTT listen loop started"
-        )
+        logger.info("MQTT listen loop started")
 
         while True:
             message = self.receive_raw()
 
-            on_message(
-                message
-            )
+            on_message(message)
 
     def close(self) -> None:
         if self.websocket is None:
@@ -300,9 +328,7 @@ class MystakeMqttClient:
             self._last_pingreq_at = None
             self._pending_packets.clear()
 
-        logger.info(
-            "WebSocket closed"
-        )
+        logger.info("WebSocket closed")
 
     def _subscribe_once(
         self,
@@ -320,17 +346,14 @@ class MystakeMqttClient:
         )
 
         logger.info(
-            "Subscribing topic=%s "
-            "qos=%s packet_id=%s",
+            "Subscribing topic=%s qos=%s packet_id=%s",
             topic,
             qos,
             packet_id,
         )
 
         try:
-            ws.send_binary(
-                packet
-            )
+            ws.send_binary(packet)
 
             response = self._await_control_packet(
                 ws,
@@ -338,15 +361,11 @@ class MystakeMqttClient:
             )
 
         except websocket.WebSocketConnectionClosedException as exc:
-            raise ConnectionError(
-                "MQTT WebSocket closed "
-                "during SUBSCRIBE"
-            ) from exc
+            raise ConnectionError("MQTT WebSocket closed during SUBSCRIBE") from exc
 
         except OSError as exc:
             raise ConnectionError(
-                "MQTT WebSocket network error "
-                "during SUBSCRIBE"
+                "MQTT WebSocket network error during SUBSCRIBE"
             ) from exc
 
         if not is_successful_suback(
@@ -354,14 +373,11 @@ class MystakeMqttClient:
             expected_packet_id=packet_id,
         ):
             raise RuntimeError(
-                "MQTT subscription rejected "
-                "or unexpected SUBACK: "
-                f"{response.hex(' ')}"
+                f"MQTT subscription rejected or unexpected SUBACK: {response.hex(' ')}"
             )
 
         logger.info(
-            "MQTT subscription accepted "
-            "topic=%s packet_id=%s",
+            "MQTT subscription accepted topic=%s packet_id=%s",
             topic,
             packet_id,
         )
@@ -382,16 +398,13 @@ class MystakeMqttClient:
         )
 
         logger.info(
-            "Unsubscribing topic=%s "
-            "packet_id=%s",
+            "Unsubscribing topic=%s packet_id=%s",
             topic,
             packet_id,
         )
 
         try:
-            ws.send_binary(
-                packet
-            )
+            ws.send_binary(packet)
 
             response = self._await_control_packet(
                 ws,
@@ -409,20 +422,15 @@ class MystakeMqttClient:
                 )
 
         except websocket.WebSocketConnectionClosedException as exc:
-            raise ConnectionError(
-                "MQTT WebSocket closed "
-                "during UNSUBSCRIBE"
-            ) from exc
+            raise ConnectionError("MQTT WebSocket closed during UNSUBSCRIBE") from exc
 
         except OSError as exc:
             raise ConnectionError(
-                "MQTT WebSocket network error "
-                "during UNSUBSCRIBE"
+                "MQTT WebSocket network error during UNSUBSCRIBE"
             ) from exc
 
         logger.info(
-            "MQTT unsubscribe accepted "
-            "topic=%s packet_id=%s",
+            "MQTT unsubscribe accepted topic=%s packet_id=%s",
             topic,
             packet_id,
         )
@@ -449,8 +457,7 @@ class MystakeMqttClient:
 
             if response == "":
                 raise ConnectionError(
-                    "MQTT WebSocket closed "
-                    f"while waiting for {description}"
+                    f"MQTT WebSocket closed while waiting for {description}"
                 )
 
             if isinstance(response, str):
@@ -465,8 +472,7 @@ class MystakeMqttClient:
                 self._last_pingreq_at = None
 
                 logger.info(
-                    "MQTT PINGRESP received "
-                    "while waiting for %s",
+                    "MQTT PINGRESP received while waiting for %s",
                     description,
                 )
                 continue
@@ -474,13 +480,10 @@ class MystakeMqttClient:
             packet_type = response[0] >> 4
 
             if packet_type == 3:
-                self._pending_packets.append(
-                    response
-                )
+                self._pending_packets.append(response)
 
                 logger.debug(
-                    "Queued MQTT PUBLISH "
-                    "while waiting for %s",
+                    "Queued MQTT PUBLISH while waiting for %s",
                     description,
                 )
                 continue
@@ -493,44 +496,34 @@ class MystakeMqttClient:
         delay = self.reconnect_initial_delay
 
         while True:
+            self._raise_if_shutdown_requested()
+
             self.close()
 
             try:
-                logger.info(
-                    "Attempting MQTT reconnect"
-                )
+                logger.info("Attempting MQTT reconnect")
 
                 self.connect()
 
                 self._resubscribe_active_topics()
 
-                logger.info(
-                    "MQTT reconnect and "
-                    "resubscribe completed"
-                )
+                logger.info("MQTT reconnect and resubscribe completed")
 
                 return
 
             except Exception:
-                logger.exception(
-                    "MQTT reconnect/resubscribe failed"
-                )
+                logger.exception("MQTT reconnect/resubscribe failed")
 
                 self.close()
 
-                sleep_seconds = self._retry_sleep_seconds(
-                    delay
-                )
+                sleep_seconds = self._retry_sleep_seconds(delay)
 
                 logger.warning(
-                    "Retrying MQTT reconnect "
-                    "in %.2f seconds",
+                    "Retrying MQTT reconnect in %.2f seconds",
                     sleep_seconds,
                 )
 
-                time.sleep(
-                    sleep_seconds
-                )
+                self._wait_or_raise_if_shutdown(sleep_seconds)
 
                 delay = min(
                     delay * 2,
@@ -541,15 +534,10 @@ class MystakeMqttClient:
         self,
     ) -> None:
         if not self._subscriptions:
-            logger.info(
-                "No active MQTT subscriptions "
-                "to restore"
-            )
+            logger.info("No active MQTT subscriptions to restore")
             return
 
-        subscriptions = tuple(
-            self._subscriptions.items()
-        )
+        subscriptions = tuple(self._subscriptions.items())
 
         logger.info(
             "Restoring %s MQTT subscription(s)",
@@ -562,9 +550,7 @@ class MystakeMqttClient:
                 qos=qos,
             )
 
-        logger.info(
-            "MQTT subscriptions restored"
-        )
+        logger.info("MQTT subscriptions restored")
 
     def _handle_read_timeout(
         self,
@@ -573,26 +559,15 @@ class MystakeMqttClient:
 
         if self._awaiting_pingresp:
             if self._last_pingreq_at is None:
-                raise ConnectionError(
-                    "MQTT keepalive state is invalid"
-                )
+                raise ConnectionError("MQTT keepalive state is invalid")
 
-            elapsed = (
-                now
-                - self._last_pingreq_at
-            )
+            elapsed = now - self._last_pingreq_at
 
-            if (
-                elapsed
-                >= MQTT_KEEP_ALIVE_SECONDS
-            ):
-                raise ConnectionError(
-                    "MQTT PINGRESP timeout"
-                )
+            if elapsed >= MQTT_KEEP_ALIVE_SECONDS:
+                raise ConnectionError("MQTT PINGRESP timeout")
 
             logger.debug(
-                "Still waiting for MQTT PINGRESP "
-                "elapsed=%.1fs",
+                "Still waiting for MQTT PINGRESP elapsed=%.1fs",
                 elapsed,
             )
             return
@@ -602,28 +577,20 @@ class MystakeMqttClient:
         packet = build_pingreq_packet()
 
         try:
-            ws.send_binary(
-                packet
-            )
+            ws.send_binary(packet)
 
         except websocket.WebSocketConnectionClosedException as exc:
             raise ConnectionError(
-                "MQTT WebSocket closed "
-                "while sending PINGREQ"
+                "MQTT WebSocket closed while sending PINGREQ"
             ) from exc
 
         except OSError as exc:
-            raise ConnectionError(
-                "MQTT network error "
-                "while sending PINGREQ"
-            ) from exc
+            raise ConnectionError("MQTT network error while sending PINGREQ") from exc
 
         self._awaiting_pingresp = True
         self._last_pingreq_at = now
 
-        logger.info(
-            "MQTT PINGREQ sent"
-        )
+        logger.info("MQTT PINGREQ sent")
 
     def _retry_sleep_seconds(
         self,
@@ -643,9 +610,7 @@ class MystakeMqttClient:
         self,
     ) -> websocket.WebSocket:
         if self.websocket is None:
-            raise ConnectionError(
-                "MQTT WebSocket is not connected"
-            )
+            raise ConnectionError("MQTT WebSocket is not connected")
 
         return self.websocket
 
