@@ -6,10 +6,12 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from dataclasses import dataclass, field
 
 import websocket
 
 from mystake.config import (
+    MQTT_ACK_TIMEOUT_SECONDS,
     MQTT_KEEP_ALIVE_SECONDS,
     MQTT_WEBSOCKET_SUBPROTOCOL,
     MQTT_WEBSOCKET_URL,
@@ -32,6 +34,19 @@ from mystake.sources.mqtt.protocol import (
 
 logger = logging.getLogger(__name__)
 
+# MQTT control packet types (fixed header high nibble).
+_PACKET_TYPE_PUBLISH = 3
+_PACKET_TYPE_SUBACK = 9
+_PACKET_TYPE_UNSUBACK = 11
+
+# Phase 5C: hard bound on `_pending_packets` so a pathological run of
+# many PUBLISH packets arriving while a SUBSCRIBE/UNSUBSCRIBE caller is
+# self-pumping for its own ack cannot grow memory without bound. In
+# real operation this queue holds at most a handful of packets - a
+# SUBACK/UNSUBACK round trip is fast - so hitting this bound would
+# itself be a symptom worth the loud error log.
+_MAX_PENDING_PACKETS = 1000
+
 
 class ListenerShutdown(Exception):
     """
@@ -40,6 +55,20 @@ class ListenerShutdown(Exception):
     signal handler-driven listener) unwinds instead of retrying or
     reconnecting.
     """
+
+
+@dataclass
+class _AckWaiter:
+    """
+    One in-flight SUBSCRIBE/UNSUBSCRIBE's wait for its SUBACK/UNSUBACK.
+
+    Populated by whichever thread is currently reading the socket (see
+    `MystakeMqttClient._read_dispatch_loop`/`_dispatch_ack`) - which may
+    or may not be the same thread that is waiting on `event`.
+    """
+
+    event: threading.Event = field(default_factory=threading.Event)
+    response: bytes | None = None
 
 
 class MystakeMqttClient:
@@ -65,20 +94,35 @@ class MystakeMqttClient:
 
         self._shutdown_event = threading.Event()
 
-        # Phase 5B: guards every physical socket read/write. The main
-        # thread's `receive_publish()` loop and a background discovery/
-        # handoff coordination thread (see
-        # `mystake.pipeline.prematch_to_live_handoff`) may both call into
-        # this client concurrently (the coordinator calls `subscribe()`
-        # the moment it detects a live transition, without waiting for
-        # `receive_publish()` to return). The lock is only held for the
-        # duration of one `ws.recv()`/`ws.send_binary()` call - never
-        # across a whole `receive_publish()`/`subscribe()` invocation -
-        # so neither caller can starve the other indefinitely; a PUBLISH
-        # observed by one thread while the other is mid SUBSCRIBE/
-        # UNSUBSCRIBE still lands safely in `_pending_packets` via the
-        # existing `_await_control_packet` handling.
-        self._io_lock = threading.Lock()
+        # Phase 5C: the physical WebSocket is single-reader.
+        # `_reader_lock` is held for as long as a thread is actively
+        # pumping `ws.recv()` - either the long-running
+        # `receive_publish()`/`receive_raw()` loop, or a
+        # SUBSCRIBE/UNSUBSCRIBE caller that found no one else already
+        # reading and stepped in to self-pump until its own ack
+        # arrives (see `_send_and_await_ack`). Whichever thread holds
+        # it is the *only* thread ever calling `ws.recv()` - there is
+        # never a concurrent socket read.
+        #
+        # Sending is independent of reading and guarded by its own
+        # short-lived `_send_lock`: a SUBSCRIBE/UNSUBSCRIBE/PINGREQ
+        # send only has to wait for another physical `send_binary()`
+        # call to finish (microseconds), never for a blocking
+        # `ws.recv()` (up to the read timeout) to return. That
+        # decoupling is the actual Phase 5C fix: the previous shared
+        # `_io_lock` serialized sends against the blocking recv, so a
+        # SUBSCRIBE could not reach the wire until an in-flight,
+        # up-to-read-timeout `recv()` returned and released it - the
+        # root cause of the observed ~25s SUBSCRIBE->SUBACK delay.
+        self._reader_lock = threading.Lock()
+        self._send_lock = threading.Lock()
+
+        # Packet-ID -> waiter for a caller currently blocked on that
+        # SUBACK/UNSUBACK. Populated by `_send_and_await_ack`, consumed
+        # by `_dispatch_ack` (called from whichever thread is currently
+        # pumping the socket).
+        self._ack_waiters: dict[int, _AckWaiter] = {}
+        self._ack_lock = threading.Lock()
 
     @property
     def shutdown_requested(self) -> bool:
@@ -98,8 +142,20 @@ class MystakeMqttClient:
         on that socket return immediately with an OS-level error,
         regardless of which layer (raw socket, TLS, the `selectors`
         retry loop in the `websocket` library) it is blocked in.
+
+        Also wakes any SUBSCRIBE/UNSUBSCRIBE caller that is blocked on
+        `_AckWaiter.event` without itself holding `_reader_lock` (i.e.
+        it lost the race to become the active pumper): without this,
+        that caller would otherwise sit out the full
+        `MQTT_ACK_TIMEOUT_SECONDS` before noticing shutdown.
         """
         self._shutdown_event.set()
+
+        with self._ack_lock:
+            waiters = list(self._ack_waiters.values())
+
+        for waiter in waiters:
+            waiter.event.set()
 
         ws = self.websocket
 
@@ -121,13 +177,18 @@ class MystakeMqttClient:
                 exc_info=True,
             )
 
-    def _ws_send(self, ws: websocket.WebSocket, packet: bytes) -> None:
-        with self._io_lock:
+    def _send_packet(self, ws: websocket.WebSocket, packet: bytes) -> None:
+        with self._send_lock:
             ws.send_binary(packet)
 
-    def _ws_recv(self, ws: websocket.WebSocket):
-        with self._io_lock:
-            return ws.recv()
+    def _ws_recv_raw(self, ws: websocket.WebSocket):
+        """
+        The only place that ever calls `ws.recv()`. Callers must hold
+        `_reader_lock` (or otherwise know they are the sole reader,
+        e.g. during the CONNACK handshake in `connect()` before any
+        other thread can reference the new socket).
+        """
+        return ws.recv()
 
     def _raise_if_shutdown_requested(self) -> None:
         if self._shutdown_event.is_set():
@@ -172,7 +233,7 @@ class MystakeMqttClient:
 
             packet_type = packet[0] >> 4
 
-            if packet_type == 3:
+            if packet_type == _PACKET_TYPE_PUBLISH:
                 return parse_publish_packet(packet)
 
             logger.debug(
@@ -206,9 +267,9 @@ class MystakeMqttClient:
 
         connect_packet = build_connect_packet(self.client_id)
 
-        self._ws_send(ws, connect_packet)
+        self._send_packet(ws, connect_packet)
 
-        response = self._ws_recv(ws)
+        response = self._ws_recv_raw(ws)
 
         if response == "":
             raise ConnectionError("MQTT WebSocket closed during CONNACK")
@@ -302,29 +363,21 @@ class MystakeMqttClient:
 
         ws = self._require_connection()
 
-        while True:
-            try:
-                message = self._ws_recv(ws)
+        with self._reader_lock:
+            # Another thread may have drained/refilled `_pending_packets`
+            # (via a self-pumping SUBSCRIBE/UNSUBSCRIBE) between the
+            # check above and acquiring the lock.
+            if self._pending_packets:
+                return self._pending_packets.popleft()
 
-            except websocket.WebSocketTimeoutException:
-                self._handle_read_timeout()
-                continue
+            packet = self._read_dispatch_loop(
+                ws,
+                stop_predicate=lambda: False,
+                queue_publish=False,
+            )
 
-            except websocket.WebSocketConnectionClosedException as exc:
-                raise ConnectionError("MQTT WebSocket connection closed") from exc
-
-            except OSError as exc:
-                raise ConnectionError("MQTT WebSocket network error") from exc
-
-            if message == "":
-                raise ConnectionError("MQTT WebSocket connection closed by remote peer")
-
-            if isinstance(message, str):
-                raise RuntimeError(
-                    f"Expected binary MQTT message, received text: {message}"
-                )
-
-            return message
+            assert packet is not None
+            return packet
 
     def listen(
         self,
@@ -368,28 +421,26 @@ class MystakeMqttClient:
             qos=qos,
         )
 
+        requested_at = time.monotonic()
+        thread_name = threading.current_thread().name
+
         logger.info(
-            "Subscribing topic=%s qos=%s packet_id=%s",
+            "SUBSCRIBE_REQUESTED topic=%s qos=%s packet_id=%s thread=%s",
             topic,
             qos,
             packet_id,
+            thread_name,
         )
 
-        try:
-            self._ws_send(ws, packet)
-
-            response = self._await_control_packet(
-                ws,
-                description="SUBACK",
-            )
-
-        except websocket.WebSocketConnectionClosedException as exc:
-            raise ConnectionError("MQTT WebSocket closed during SUBSCRIBE") from exc
-
-        except OSError as exc:
-            raise ConnectionError(
-                "MQTT WebSocket network error during SUBSCRIBE"
-            ) from exc
+        response = self._send_and_await_ack(
+            ws,
+            packet,
+            packet_id,
+            topic=topic,
+            stage_prefix="SUBSCRIBE",
+            ack_description="SUBACK",
+            thread_name=thread_name,
+        )
 
         if not is_successful_suback(
             response,
@@ -400,9 +451,11 @@ class MystakeMqttClient:
             )
 
         logger.info(
-            "MQTT subscription accepted topic=%s packet_id=%s",
+            "SUBSCRIBE_COMPLETED topic=%s packet_id=%s total_elapsed=%.3fs thread=%s",
             topic,
             packet_id,
+            time.monotonic() - requested_at,
+            thread_name,
         )
 
         return packet_id
@@ -420,98 +473,318 @@ class MystakeMqttClient:
             packet_id=packet_id,
         )
 
+        requested_at = time.monotonic()
+        thread_name = threading.current_thread().name
+
         logger.info(
-            "Unsubscribing topic=%s packet_id=%s",
+            "UNSUBSCRIBE_REQUESTED topic=%s packet_id=%s thread=%s",
             topic,
             packet_id,
+            thread_name,
         )
 
-        try:
-            self._ws_send(ws, packet)
+        response = self._send_and_await_ack(
+            ws,
+            packet,
+            packet_id,
+            topic=topic,
+            stage_prefix="UNSUBSCRIBE",
+            ack_description="UNSUBACK",
+            thread_name=thread_name,
+        )
 
-            response = self._await_control_packet(
-                ws,
-                description="UNSUBACK",
+        if not is_successful_unsuback(
+            response,
+            expected_packet_id=packet_id,
+        ):
+            raise RuntimeError(
+                "Unexpected MQTT packet "
+                "while waiting for UNSUBACK: "
+                f"{response.hex(' ')}"
             )
 
-            if not is_successful_unsuback(
-                response,
-                expected_packet_id=packet_id,
-            ):
-                raise RuntimeError(
-                    "Unexpected MQTT packet "
-                    "while waiting for UNSUBACK: "
-                    f"{response.hex(' ')}"
-                )
-
-        except websocket.WebSocketConnectionClosedException as exc:
-            raise ConnectionError("MQTT WebSocket closed during UNSUBSCRIBE") from exc
-
-        except OSError as exc:
-            raise ConnectionError(
-                "MQTT WebSocket network error during UNSUBSCRIBE"
-            ) from exc
-
         logger.info(
-            "MQTT unsubscribe accepted topic=%s packet_id=%s",
+            "UNSUBSCRIBE_COMPLETED topic=%s packet_id=%s total_elapsed=%.3fs thread=%s",
             topic,
             packet_id,
+            time.monotonic() - requested_at,
+            thread_name,
         )
 
         return packet_id
 
-    def _await_control_packet(
+    def _send_and_await_ack(
+        self,
+        ws: websocket.WebSocket,
+        packet: bytes,
+        packet_id: int,
+        *,
+        topic: str,
+        stage_prefix: str,
+        ack_description: str,
+        thread_name: str,
+    ) -> bytes:
+        """
+        Send a SUBSCRIBE/UNSUBSCRIBE packet and block until its
+        SUBACK/UNSUBACK has been dispatched to this call's waiter.
+
+        This never calls `ws.recv()` itself unless it also becomes the
+        active reader (see below) - it only ever blocks on an
+        in-process `threading.Event`, so it can never hold up (or be
+        held up by) the send of a physical packet, which is the actual
+        Phase 5C fix: sending is decoupled from the (potentially long-
+        blocking) socket read.
+
+        Packet-ID ownership: a waiter is registered under `packet_id`
+        for the duration of this call and removed in `finally`, so a
+        SUBACK/UNSUBACK for *this* packet_id can only ever be
+        delivered to *this* call, never cross-delivered to a
+        differently-keyed concurrent SUBSCRIBE/UNSUBSCRIBE.
+
+        Reader role: after sending, this call makes one non-blocking
+        attempt to become the active socket reader (`_reader_lock`).
+        - If it succeeds (no one else is currently reading, e.g. this
+          is a synchronous/test call, or a reconnect resubscribe on a
+          freshly reconnected socket with no other thread yet
+          attached), it self-pumps `ws.recv()`, dispatching
+          SUBACK/UNSUBACK to whichever waiter each belongs to (which
+          may be a *different* concurrent SUBSCRIBE/UNSUBSCRIBE call)
+          and queuing any PUBLISH it observes in `_pending_packets` for
+          the next `receive_raw()` call - until its own ack arrives.
+        - If it fails (some other thread - typically the main
+          `receive_publish()` loop - is already the active reader),
+          this call does not touch the socket at all; it just waits for
+          that other thread to dispatch the ack to it.
+        """
+        self._raise_if_shutdown_requested()
+
+        waiter = _AckWaiter()
+
+        with self._ack_lock:
+            self._ack_waiters[packet_id] = waiter
+
+        try:
+            lock_wait_start = time.monotonic()
+
+            with self._send_lock:
+                lock_acquired_at = time.monotonic()
+
+                logger.info(
+                    "%s_SEND_LOCK_ACQUIRED topic=%s packet_id=%s "
+                    "lock_wait=%.3fs thread=%s",
+                    stage_prefix,
+                    topic,
+                    packet_id,
+                    lock_acquired_at - lock_wait_start,
+                    thread_name,
+                )
+
+                try:
+                    ws.send_binary(packet)
+
+                except websocket.WebSocketConnectionClosedException as exc:
+                    raise ConnectionError(
+                        f"MQTT WebSocket closed while sending {stage_prefix} "
+                        f"topic={topic} packet_id={packet_id}"
+                    ) from exc
+
+                except OSError as exc:
+                    raise ConnectionError(
+                        f"MQTT WebSocket network error while sending "
+                        f"{stage_prefix} topic={topic} packet_id={packet_id}"
+                    ) from exc
+
+                sent_at = time.monotonic()
+
+            logger.info(
+                "%s_PACKET_SENT topic=%s packet_id=%s send_duration=%.3fs thread=%s",
+                stage_prefix,
+                topic,
+                packet_id,
+                sent_at - lock_acquired_at,
+                thread_name,
+            )
+
+            became_reader = self._reader_lock.acquire(blocking=False)
+
+            if became_reader:
+                try:
+                    self._read_dispatch_loop(
+                        ws,
+                        stop_predicate=waiter.event.is_set,
+                        queue_publish=True,
+                    )
+                finally:
+                    self._reader_lock.release()
+
+            acked = waiter.event.wait(timeout=MQTT_ACK_TIMEOUT_SECONDS)
+
+            ack_received_at = time.monotonic()
+
+            if self._shutdown_event.is_set() and waiter.response is None:
+                raise ListenerShutdown(
+                    "Shutdown requested while waiting for MQTT "
+                    f"{ack_description} packet_id={packet_id}"
+                )
+
+            if not acked:
+                raise ConnectionError(
+                    f"Timed out waiting for MQTT {ack_description} "
+                    f"packet_id={packet_id} topic={topic} "
+                    f"after {MQTT_ACK_TIMEOUT_SECONDS}s"
+                )
+
+            logger.info(
+                "%s_RECEIVED topic=%s packet_id=%s ack_wait=%.3fs "
+                "became_reader=%s thread=%s",
+                ack_description,
+                topic,
+                packet_id,
+                ack_received_at - sent_at,
+                became_reader,
+                thread_name,
+            )
+
+            assert waiter.response is not None
+            return waiter.response
+
+        finally:
+            with self._ack_lock:
+                self._ack_waiters.pop(packet_id, None)
+
+    def _read_dispatch_loop(
         self,
         ws: websocket.WebSocket,
         *,
-        description: str,
-    ) -> bytes:
+        stop_predicate: Callable[[], bool],
+        queue_publish: bool,
+    ) -> bytes | None:
         """
-        Read packets from the WebSocket until a non-PUBLISH,
-        non-PINGRESP control packet arrives (e.g. SUBACK/UNSUBACK).
+        Read physical frames off `ws` (caller must hold `_reader_lock`)
+        until either a PUBLISH is found (returned immediately when
+        `queue_publish` is False), or `stop_predicate()` becomes true
+        (used by a self-pumping SUBSCRIBE/UNSUBSCRIBE to stop once its
+        own ack has arrived).
 
-        Any PUBLISH packet observed while waiting is queued in
-        `_pending_packets` rather than dropped, since the broker may
-        deliver PUBLISH packets for other active subscriptions before
-        acknowledging the in-flight SUBSCRIBE/UNSUBSCRIBE.
+        Any PUBLISH observed is either returned directly (the main
+        `receive_raw()` reader) or queued to `_pending_packets` (a
+        self-pumping ack-waiter, which cannot return a PUBLISH from
+        deep inside its own call stack) - it is never dropped.
+        SUBACK/UNSUBACK packets are always dispatched via
+        `_dispatch_ack`, regardless of which of the two roles above is
+        calling.
         """
         while True:
-            response = self._ws_recv(ws)
+            try:
+                message = self._ws_recv_raw(ws)
 
-            if response == "":
-                raise ConnectionError(
-                    f"MQTT WebSocket closed while waiting for {description}"
-                )
+            except websocket.WebSocketTimeoutException:
+                self._handle_read_timeout()
 
-            if isinstance(response, str):
+                if stop_predicate():
+                    return None
+
+                continue
+
+            except websocket.WebSocketConnectionClosedException as exc:
+                raise ConnectionError("MQTT WebSocket connection closed") from exc
+
+            except OSError as exc:
+                raise ConnectionError("MQTT WebSocket network error") from exc
+
+            if message == "":
+                raise ConnectionError("MQTT WebSocket connection closed by remote peer")
+
+            if isinstance(message, str):
                 raise RuntimeError(
-                    "Expected binary MQTT message "
-                    f"while waiting for {description}, "
-                    f"received text: {response}"
+                    f"Expected binary MQTT message, received text: {message}"
                 )
 
-            if is_pingresp(response):
-                self._awaiting_pingresp = False
-                self._last_pingreq_at = None
+            publish = self._handle_frame(message)
 
-                logger.info(
-                    "MQTT PINGRESP received while waiting for %s",
-                    description,
-                )
-                continue
+            if publish is not None:
+                if queue_publish:
+                    self._enqueue_pending_packet(publish)
+                else:
+                    return publish
 
-            packet_type = response[0] >> 4
+            if stop_predicate():
+                return None
 
-            if packet_type == 3:
-                self._pending_packets.append(response)
+    def _handle_frame(self, message: bytes) -> bytes | None:
+        """
+        Handle one physical frame already known to be a non-empty
+        binary MQTT packet. Returns the raw PUBLISH bytes if `message`
+        is a PUBLISH, otherwise dispatches it internally (PINGRESP
+        keepalive state, SUBACK/UNSUBACK ack delivery) and returns
+        None.
+        """
+        if is_pingresp(message):
+            self._awaiting_pingresp = False
+            self._last_pingreq_at = None
 
-                logger.debug(
-                    "Queued MQTT PUBLISH while waiting for %s",
-                    description,
-                )
-                continue
+            logger.info("MQTT PINGRESP received")
+            return None
 
-            return response
+        packet_type = message[0] >> 4
+
+        if packet_type in (_PACKET_TYPE_SUBACK, _PACKET_TYPE_UNSUBACK):
+            self._dispatch_ack(message)
+            return None
+
+        if packet_type == _PACKET_TYPE_PUBLISH:
+            return message
+
+        logger.debug(
+            "Ignoring non-PUBLISH/ack MQTT packet type=%s raw=%s",
+            packet_type,
+            message.hex(" "),
+        )
+        return None
+
+    def _dispatch_ack(self, message: bytes) -> None:
+        """
+        Route a SUBACK/UNSUBACK to the waiter registered for its
+        packet_id (both packet types carry the packet_id at the same
+        offset - see `protocol.parse_suback`/`is_successful_unsuback`).
+        An ack with no matching waiter (already timed out, or a stray
+        broker retransmit) is logged and dropped - there is nothing
+        else safe to do with it.
+        """
+        if len(message) < 4:
+            logger.warning(
+                "Received malformed MQTT ack (too short): %s",
+                message.hex(" "),
+            )
+            return
+
+        packet_id = int.from_bytes(message[2:4], byteorder="big")
+
+        with self._ack_lock:
+            waiter = self._ack_waiters.get(packet_id)
+
+        if waiter is None:
+            logger.warning(
+                "Received MQTT ack for unknown/expired packet_id=%s raw=%s",
+                packet_id,
+                message.hex(" "),
+            )
+            return
+
+        waiter.response = message
+        waiter.event.set()
+
+    def _enqueue_pending_packet(self, packet: bytes) -> None:
+        if len(self._pending_packets) >= _MAX_PENDING_PACKETS:
+            self._pending_packets.popleft()
+
+            logger.error(
+                "MQTT pending-packet queue exceeded bound=%s; dropped oldest "
+                "queued PUBLISH to bound memory use",
+                _MAX_PENDING_PACKETS,
+            )
+
+        self._pending_packets.append(packet)
 
     def _reconnect_and_resubscribe(
         self,
@@ -600,7 +873,7 @@ class MystakeMqttClient:
         packet = build_pingreq_packet()
 
         try:
-            self._ws_send(ws, packet)
+            self._send_packet(ws, packet)
 
         except websocket.WebSocketConnectionClosedException as exc:
             raise ConnectionError(

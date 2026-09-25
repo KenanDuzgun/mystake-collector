@@ -7,6 +7,14 @@ MQTT_PROTOCOL_LEVEL = 4
 MQTT_KEEP_ALIVE_SECONDS = 60
 MQTT_CLEAN_SESSION = True
 
+# Phase 5C: max time a SUBSCRIBE/UNSUBSCRIBE caller waits for its
+# SUBACK/UNSUBACK once the packet has been sent. This bounds
+# `MystakeMqttClient._send_and_await_ack` and is independent of
+# `MQTT_KEEP_ALIVE_SECONDS` - it is not a socket read timeout, just a
+# sanity bound on how long a real broker round trip is allowed to take
+# before the caller gives up and raises.
+MQTT_ACK_TIMEOUT_SECONDS = 20.0
+
 MQTT_TOPIC_PREMATCH_HEADER = "prematch/header"
 
 # PROVEN topic (docs/handoff/handoff.md section 7): a broad/global
