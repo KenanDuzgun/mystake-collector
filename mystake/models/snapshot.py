@@ -35,11 +35,7 @@ def parse_prematch_snapshot(
     """
     ev = game.get("ev")
 
-    markets = (
-        parse_prematch_markets(ev)
-        if isinstance(ev, dict)
-        else ()
-    )
+    markets = parse_prematch_markets(ev) if isinstance(ev, dict) else ()
 
     return Snapshot(
         game_id=game.get("id"),
@@ -57,19 +53,11 @@ def parse_live_snapshot(
     """
     match = data.get("Match")
 
-    game_id = (
-        match.get("GameID")
-        if isinstance(match, dict)
-        else None
-    )
+    game_id = match.get("GameID") if isinstance(match, dict) else None
 
     gmk = data.get("gmk")
 
-    markets = (
-        parse_live_markets(gmk)
-        if gmk is not None
-        else ()
-    )
+    markets = parse_live_markets(gmk, data.get("mk")) if gmk is not None else ()
 
     return Snapshot(
         game_id=game_id,

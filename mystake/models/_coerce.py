@@ -27,6 +27,23 @@ def coerce_bool(value: Any) -> bool | None:
     return None
 
 
+def coerce_str(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value
+
+    return None
+
+
+def coerce_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    return None
+
+
 def iter_dict_items(value: Any):
     if isinstance(value, list):
         for item in value:

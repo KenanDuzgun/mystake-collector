@@ -27,9 +27,7 @@ def test_parses_prematch_snapshot():
 
 
 def test_prematch_snapshot_without_ev():
-    snapshot = parse_prematch_snapshot(
-        {"id": 1}
-    )
+    snapshot = parse_prematch_snapshot({"id": 1})
 
     assert snapshot.markets == ()
 
@@ -64,3 +62,20 @@ def test_live_snapshot_missing_match_and_gmk():
 
     assert snapshot.game_id is None
     assert snapshot.markets == ()
+
+
+def test_live_snapshot_joins_mk_into_market_name():
+    data = {
+        "Match": {"GameID": 100, "Score": "1:0"},
+        "gmk": [
+            {"id": 2001, "mid": 55, "v": 1.80, "pn": "under", "h": 2.5},
+        ],
+        "mk": [{"ID": 55, "Name": "Total", "IsHandicap": False}],
+        "TimeLines": [],
+    }
+
+    snapshot = parse_live_snapshot(data)
+
+    assert snapshot.markets[0].name == "Total"
+    assert snapshot.markets[0].selections[0].name == "under"
+    assert snapshot.markets[0].selections[0].line == 2.5
