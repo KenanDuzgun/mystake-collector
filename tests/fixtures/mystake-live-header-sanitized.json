@@ -1,0 +1,3243 @@
+{
+  "Games": [
+    {
+      "ID": 72485840,
+      "Sport": 2,
+      "Region": 211,
+      "Champ": 46061,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 405602,
+      "Team2": 273807,
+      "MatchStatusID": 18,
+      "MatchTime": "40",
+      "Score": "81:94",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 70970474,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73477863,
+      "Sport": 3,
+      "Region": 15,
+      "Champ": 661,
+      "StartTime": "2026-09-24T22:05:00",
+      "Team1": 536,
+      "Team2": 531,
+      "MatchStatusID": 83,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 41,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": true,
+      "bgid": 63301413,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73478981,
+      "Sport": 3,
+      "Region": 15,
+      "Champ": 661,
+      "StartTime": "2026-09-24T22:45:00",
+      "Team1": 519,
+      "Team2": 523,
+      "MatchStatusID": 78,
+      "MatchTime": null,
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 58,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": true,
+      "bgid": 63299205,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73479322,
+      "Sport": 3,
+      "Region": 15,
+      "Champ": 661,
+      "StartTime": "2026-09-24T23:05:00",
+      "Team1": 534,
+      "Team2": 542,
+      "MatchStatusID": 76,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 56,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": true,
+      "bgid": 63302137,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73479497,
+      "Sport": 3,
+      "Region": 15,
+      "Champ": 661,
+      "StartTime": "2026-09-24T23:15:00",
+      "Team1": 517,
+      "Team2": 522,
+      "MatchStatusID": 74,
+      "MatchTime": null,
+      "Score": "4:1",
+      "LiveBetStatus": true,
+      "mc": 56,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": true,
+      "bgid": 63301859,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73869188,
+      "Sport": 2,
+      "Region": 14,
+      "Champ": 657,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 3878,
+      "Team2": 3868,
+      "MatchStatusID": 15,
+      "MatchTime": "6",
+      "Score": "16:8",
+      "LiveBetStatus": true,
+      "mc": 38,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 68095980,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 73869191,
+      "Sport": 2,
+      "Region": 14,
+      "Champ": 657,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 3869,
+      "Team2": 657175,
+      "MatchStatusID": 16,
+      "MatchTime": "15",
+      "Score": "28:28",
+      "LiveBetStatus": true,
+      "mc": 37,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": true,
+      "bgid": 68096568,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75488541,
+      "Sport": 4,
+      "Region": 36,
+      "Champ": 988,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 7866,
+      "Team2": 8379,
+      "MatchStatusID": 3,
+      "MatchTime": "20",
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 47,
+      "neut": false,
+      "plng": null,
+      "ovlng": "5",
+      "hst": false,
+      "bgid": 73101498,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75488566,
+      "Sport": 4,
+      "Region": 36,
+      "Champ": 988,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 8370,
+      "Team2": 7861,
+      "MatchStatusID": 3,
+      "MatchTime": "17",
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": null,
+      "ovlng": "5",
+      "hst": false,
+      "bgid": 73101490,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75488913,
+      "Sport": 4,
+      "Region": 36,
+      "Champ": 988,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 8042,
+      "Team2": 8375,
+      "MatchStatusID": 3,
+      "MatchTime": "20",
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 47,
+      "neut": false,
+      "plng": null,
+      "ovlng": "5",
+      "hst": false,
+      "bgid": 73101496,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75488998,
+      "Sport": 4,
+      "Region": 36,
+      "Champ": 988,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 8378,
+      "Team2": 7858,
+      "MatchStatusID": 3,
+      "MatchTime": "18",
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 49,
+      "neut": false,
+      "plng": null,
+      "ovlng": "5",
+      "hst": false,
+      "bgid": 73101488,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75489171,
+      "Sport": 4,
+      "Region": 36,
+      "Champ": 988,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 8381,
+      "Team2": 8372,
+      "MatchStatusID": 3,
+      "MatchTime": "19",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 51,
+      "neut": false,
+      "plng": null,
+      "ovlng": "5",
+      "hst": false,
+      "bgid": 73101492,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75697075,
+      "Sport": 26,
+      "Region": 178,
+      "Champ": 79096,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 491957,
+      "Team2": 547852,
+      "MatchStatusID": 24,
+      "MatchTime": "20",
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 13,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74199272,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75823194,
+      "Sport": 22,
+      "Region": 268,
+      "Champ": 11920,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 258192,
+      "Team2": 379055,
+      "MatchStatusID": 1,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73266124,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 75823195,
+      "Sport": 22,
+      "Region": 268,
+      "Champ": 11465,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 261481,
+      "Team2": 575899,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "2:0",
+      "LiveBetStatus": true,
+      "mc": 19,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73265728,
+      "bgenid": 14205673,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 75823196,
+      "Sport": 22,
+      "Region": 268,
+      "Champ": 11920,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 23247,
+      "Team2": 23249,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "0:2",
+      "LiveBetStatus": true,
+      "mc": 9,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73266122,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76210846,
+      "Sport": 6,
+      "Region": 70,
+      "Champ": 18134,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 6981,
+      "Team2": 104614,
+      "MatchStatusID": 4,
+      "MatchTime": "53",
+      "Score": "36:10",
+      "LiveBetStatus": true,
+      "mc": 9,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74668322,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76218461,
+      "Sport": 15,
+      "Region": 42,
+      "Champ": 1034,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 5662,
+      "Team2": 5716,
+      "MatchStatusID": 15,
+      "MatchTime": "4",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 30,
+      "neut": false,
+      "plng": "15",
+      "ovlng": null,
+      "hst": true,
+      "bgid": 70970844,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76315305,
+      "Sport": 22,
+      "Region": 127,
+      "Champ": 21764,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 576431,
+      "Team2": 685661,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 9,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74783374,
+      "bgenid": 14492934,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76352265,
+      "Sport": 5,
+      "Region": 1082,
+      "Champ": 131963,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 208821,
+      "Team2": 203856,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 36,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74809034,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76444758,
+      "Sport": 3,
+      "Region": 1014,
+      "Champ": 75162,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 197552,
+      "Team2": 197549,
+      "MatchStatusID": 1,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 29,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74810366,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76452089,
+      "Sport": 5,
+      "Region": 1964,
+      "Champ": 132105,
+      "StartTime": "2026-09-24T20:00:00",
+      "Team1": 446220,
+      "Team2": 445613,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 16,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74829434,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76476717,
+      "Sport": 4,
+      "Region": 158,
+      "Champ": 3198,
+      "StartTime": "2026-09-24T23:05:00",
+      "Team1": 7627,
+      "Team2": 7629,
+      "MatchStatusID": 3,
+      "MatchTime": "4",
+      "Score": "2:1",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": "20",
+      "ovlng": "5",
+      "hst": true,
+      "bgid": 72180602,
+      "bgenid": 14025830,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76493199,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 117345,
+      "Team2": 131173,
+      "MatchStatusID": 11,
+      "MatchTime": null,
+      "Score": "2:1",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73534794,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493200,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 131894,
+      "Team2": 131901,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73907352,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493201,
+      "Sport": 22,
+      "Region": 268,
+      "Champ": 13427,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 349740,
+      "Team2": 661429,
+      "MatchStatusID": 11,
+      "MatchTime": null,
+      "Score": "1:2",
+      "LiveBetStatus": true,
+      "mc": 6,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74864646,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493203,
+      "Sport": 26,
+      "Region": 485,
+      "Champ": 10434,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 300038,
+      "Team2": 117789,
+      "MatchStatusID": 3,
+      "MatchTime": "5",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 19,
+      "neut": false,
+      "plng": "20",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74844558,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493206,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 131892,
+      "Team2": 262164,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "0:2",
+      "LiveBetStatus": true,
+      "mc": 2,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73907336,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493209,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 129286,
+      "Team2": 170739,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 16,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73907334,
+      "bgenid": 14143038,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76493214,
+      "Sport": 22,
+      "Region": 268,
+      "Champ": 13427,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 81696,
+      "Team2": 106103,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74861790,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493217,
+      "Sport": 26,
+      "Region": 484,
+      "Champ": 10303,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 62689,
+      "Team2": 684680,
+      "MatchStatusID": 3,
+      "MatchTime": "8",
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 18,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74462260,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76493222,
+      "Sport": 2,
+      "Region": 946,
+      "Champ": 112177,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 172192,
+      "Team2": 679215,
+      "MatchStatusID": 24,
+      "MatchTime": "0",
+      "Score": "56:31",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73494012,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 9
+    },
+    {
+      "ID": 76493224,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T22:00:00",
+      "Team1": 317447,
+      "Team2": 379582,
+      "MatchStatusID": 11,
+      "MatchTime": null,
+      "Score": "1:2",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73912776,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76508612,
+      "Sport": 2,
+      "Region": 382,
+      "Champ": 62872,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 77459,
+      "Team2": 601966,
+      "MatchStatusID": 17,
+      "MatchTime": "6",
+      "Score": "41:54",
+      "LiveBetStatus": true,
+      "mc": 27,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74931034,
+      "bgenid": 14496691,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76509222,
+      "Sport": 1,
+      "Region": 48,
+      "Champ": 106505,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 10963,
+      "Team2": 10975,
+      "MatchStatusID": 3,
+      "MatchTime": "10",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 77,
+      "neut": false,
+      "plng": "45",
+      "ovlng": null,
+      "hst": true,
+      "bgid": 74321594,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76516454,
+      "Sport": 1,
+      "Region": 1626,
+      "Champ": 69525,
+      "StartTime": "2026-09-24T23:35:00",
+      "Team1": 378580,
+      "Team2": 666189,
+      "MatchStatusID": 4,
+      "MatchTime": "6",
+      "Score": "2:0",
+      "LiveBetStatus": true,
+      "mc": 7,
+      "neut": true,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74972756,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76516457,
+      "Sport": 1,
+      "Region": 1626,
+      "Champ": 69525,
+      "StartTime": "2026-09-24T23:35:00",
+      "Team1": 617421,
+      "Team2": 357733,
+      "MatchStatusID": 4,
+      "MatchTime": "6",
+      "Score": "4:1",
+      "LiveBetStatus": true,
+      "mc": 7,
+      "neut": true,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74972772,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76517367,
+      "Sport": 2,
+      "Region": 1662,
+      "Champ": 108287,
+      "StartTime": "2026-09-24T23:40:00",
+      "Team1": 653883,
+      "Team2": 671993,
+      "MatchStatusID": 15,
+      "MatchTime": "2",
+      "Score": "4:7",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": true,
+      "plng": "5",
+      "ovlng": "3",
+      "hst": false,
+      "bgid": 74973454,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76521064,
+      "Sport": 2,
+      "Region": 382,
+      "Champ": 30451,
+      "StartTime": "2026-09-24T23:15:00",
+      "Team1": 123863,
+      "Team2": 2691,
+      "MatchStatusID": 16,
+      "MatchTime": "7",
+      "Score": "27:25",
+      "LiveBetStatus": true,
+      "mc": 38,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": true,
+      "bgid": 74968896,
+      "bgenid": 14470273,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76521813,
+      "Sport": 1,
+      "Region": 1205,
+      "Champ": 59890,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 683642,
+      "Team2": 686492,
+      "MatchStatusID": 4,
+      "MatchTime": "11",
+      "Score": "1:2",
+      "LiveBetStatus": true,
+      "mc": 1,
+      "neut": true,
+      "plng": "6",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74975270,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76521892,
+      "Sport": 1,
+      "Region": 1205,
+      "Champ": 59890,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 676527,
+      "Team2": 399533,
+      "MatchStatusID": 4,
+      "MatchTime": "11",
+      "Score": "2:1",
+      "LiveBetStatus": true,
+      "mc": 1,
+      "neut": true,
+      "plng": "6",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74975366,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76527483,
+      "Sport": 1,
+      "Region": 1205,
+      "Champ": 57634,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 683663,
+      "Team2": 204813,
+      "MatchStatusID": 4,
+      "MatchTime": "11",
+      "Score": "5:1",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": true,
+      "plng": "6",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74978170,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76527594,
+      "Sport": 1,
+      "Region": 1205,
+      "Champ": 57634,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 682449,
+      "Team2": 678722,
+      "MatchStatusID": 4,
+      "MatchTime": "11",
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 1,
+      "neut": true,
+      "plng": "6",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74978336,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76536879,
+      "Sport": 2,
+      "Region": 331,
+      "Champ": 131629,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 811,
+      "Team2": 675499,
+      "MatchStatusID": 16,
+      "MatchTime": "2",
+      "Score": "33:48",
+      "LiveBetStatus": true,
+      "mc": 31,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74758870,
+      "bgenid": 14447755,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76537550,
+      "Sport": 2,
+      "Region": 946,
+      "Champ": 112177,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 293564,
+      "Team2": 495018,
+      "MatchStatusID": 15,
+      "MatchTime": "4",
+      "Score": "15:9",
+      "LiveBetStatus": true,
+      "mc": 32,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73494014,
+      "bgenid": 14277432,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76545658,
+      "Sport": 2,
+      "Region": 331,
+      "Champ": 131630,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 819,
+      "Team2": 341201,
+      "MatchStatusID": 16,
+      "MatchTime": "0",
+      "Score": "46:42",
+      "LiveBetStatus": true,
+      "mc": 30,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74758890,
+      "bgenid": 14447754,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76545740,
+      "Sport": 2,
+      "Region": 331,
+      "Champ": 131630,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 814,
+      "Team2": 812,
+      "MatchStatusID": 15,
+      "MatchTime": "3",
+      "Score": "13:10",
+      "LiveBetStatus": true,
+      "mc": 30,
+      "neut": false,
+      "plng": "10",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74758892,
+      "bgenid": 14447756,
+      "tdesc": true,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76551886,
+      "Sport": 19,
+      "Region": 1002,
+      "Champ": 50193,
+      "StartTime": "2026-09-24T23:30:00",
+      "Team1": 362198,
+      "Team2": 283485,
+      "MatchStatusID": 11,
+      "MatchTime": null,
+      "Score": "1:2",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74990250,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76562443,
+      "Sport": 21,
+      "Region": 97,
+      "Champ": 40252,
+      "StartTime": "2026-09-24T23:38:00",
+      "Team1": 27848,
+      "Team2": 142757,
+      "MatchStatusID": 95,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 14,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74999486,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76576401,
+      "Sport": 5,
+      "Region": 1967,
+      "Champ": 132179,
+      "StartTime": "2026-09-24T22:49:00",
+      "Team1": 625642,
+      "Team2": 686389,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 17,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14483887,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76579759,
+      "Sport": 63,
+      "Region": 820,
+      "Champ": 80601,
+      "StartTime": "2026-09-24T21:05:06",
+      "Team1": 304500,
+      "Team2": 378890,
+      "MatchStatusID": 2,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 1,
+      "neut": false,
+      "plng": "0",
+      "ovlng": "0",
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 11
+    },
+    {
+      "ID": 76580136,
+      "Sport": 5,
+      "Region": 1967,
+      "Champ": 132158,
+      "StartTime": "2026-09-24T14:02:00",
+      "Team1": 450301,
+      "Team2": 572703,
+      "MatchStatusID": 10,
+      "MatchTime": null,
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 9,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487420,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76580383,
+      "Sport": 5,
+      "Region": 1967,
+      "Champ": 132158,
+      "StartTime": "2026-09-24T20:40:00",
+      "Team1": 153776,
+      "Team2": 411172,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487377,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582053,
+      "Sport": 5,
+      "Region": 1967,
+      "Champ": 132179,
+      "StartTime": "2026-09-24T23:34:00",
+      "Team1": 686418,
+      "Team2": 686410,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 17,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14483863,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582725,
+      "Sport": 5,
+      "Region": 1967,
+      "Champ": 132158,
+      "StartTime": "2026-09-24T19:53:00",
+      "Team1": 686266,
+      "Team2": 508729,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 16,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487373,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582756,
+      "Sport": 5,
+      "Region": 1968,
+      "Champ": 132182,
+      "StartTime": "2026-09-24T18:59:00",
+      "Team1": 648355,
+      "Team2": 686432,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 16,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487677,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582757,
+      "Sport": 5,
+      "Region": 1968,
+      "Champ": 132181,
+      "StartTime": "2026-09-24T22:46:00",
+      "Team1": 686430,
+      "Team2": 632176,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487306,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582758,
+      "Sport": 5,
+      "Region": 1968,
+      "Champ": 132182,
+      "StartTime": "2026-09-24T22:18:00",
+      "Team1": 686433,
+      "Team2": 686439,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "0:1",
+      "LiveBetStatus": true,
+      "mc": 16,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487660,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76582760,
+      "Sport": 5,
+      "Region": 1968,
+      "Champ": 132181,
+      "StartTime": "2026-09-24T23:01:00",
+      "Team1": 686850,
+      "Team2": 686618,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14487274,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76585675,
+      "Sport": 1,
+      "Region": 12,
+      "Champ": 46211,
+      "StartTime": "2026-09-24T22:30:00",
+      "Team1": 270107,
+      "Team2": 270224,
+      "MatchStatusID": 45,
+      "MatchTime": "53",
+      "Score": "0:2",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": "45",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 74516080,
+      "rct1": 2,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76586765,
+      "Sport": 22,
+      "Region": 507,
+      "Champ": 12275,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 170615,
+      "Team2": 379926,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": false,
+      "plng": "5",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 73907342,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 3
+    },
+    {
+      "ID": 76587321,
+      "Sport": 1,
+      "Region": 294,
+      "Champ": 58945,
+      "StartTime": "2026-09-24T23:00:00",
+      "Team1": 680807,
+      "Team2": 587747,
+      "MatchStatusID": 3,
+      "MatchTime": "44",
+      "Score": "1:1",
+      "LiveBetStatus": true,
+      "mc": 57,
+      "neut": false,
+      "plng": "45",
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "bgenid": 14494238,
+      "rct1": 0,
+      "rct2": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 6
+    },
+    {
+      "ID": 76611956,
+      "Sport": 192,
+      "Region": 1934,
+      "Champ": 110558,
+      "StartTime": "2026-09-24T21:34:56",
+      "Team1": 581429,
+      "Team2": 582340,
+      "MatchStatusID": 227,
+      "MatchTime": null,
+      "Score": "26:135",
+      "LiveBetStatus": true,
+      "mc": 11,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 26062,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 27
+    },
+    {
+      "ID": 76612045,
+      "Sport": 109,
+      "Region": 1191,
+      "Champ": 38392,
+      "StartTime": "2026-09-24T21:39:38.697",
+      "Team1": 236015,
+      "Team2": 235965,
+      "MatchStatusID": 87,
+      "MatchTime": null,
+      "Score": "1:3",
+      "LiveBetStatus": true,
+      "mc": 11,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 49588036,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 21
+    },
+    {
+      "ID": 76612174,
+      "Sport": 1,
+      "Region": 1610,
+      "Champ": 105005,
+      "StartTime": "2026-09-24T23:35:00",
+      "Team1": 653961,
+      "Team2": 679806,
+      "MatchStatusID": 4,
+      "MatchTime": "7",
+      "Score": "1:3",
+      "LiveBetStatus": true,
+      "mc": 2,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612203,
+      "Sport": 2,
+      "Region": 1712,
+      "Champ": 76859,
+      "StartTime": "2026-09-24T23:19:00",
+      "Team1": 516825,
+      "Team2": 525239,
+      "MatchStatusID": 18,
+      "MatchTime": "3",
+      "Score": "53:57",
+      "LiveBetStatus": true,
+      "mc": 3,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612443,
+      "Sport": 2,
+      "Region": 1623,
+      "Champ": 68989,
+      "StartTime": "2026-09-24T23:47:00",
+      "Team1": 610086,
+      "Team2": 505823,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612448,
+      "Sport": 192,
+      "Region": 1544,
+      "Champ": 57434,
+      "StartTime": "2026-09-24T22:01:49",
+      "Team1": 305953,
+      "Team2": 305851,
+      "MatchStatusID": 227,
+      "MatchTime": null,
+      "Score": "4:184",
+      "LiveBetStatus": true,
+      "mc": 0,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 26063,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 27
+    },
+    {
+      "ID": 76612465,
+      "Sport": 2,
+      "Region": 1712,
+      "Champ": 76859,
+      "StartTime": "2026-09-24T23:51:00",
+      "Team1": 561332,
+      "Team2": 562692,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612534,
+      "Sport": 2,
+      "Region": 1623,
+      "Champ": 94467,
+      "StartTime": "2026-09-24T23:27:00",
+      "Team1": 500403,
+      "Team2": 396809,
+      "MatchStatusID": 17,
+      "MatchTime": "1",
+      "Score": "33:32",
+      "LiveBetStatus": true,
+      "mc": 6,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612734,
+      "Sport": 2,
+      "Region": 1712,
+      "Champ": 77129,
+      "StartTime": "2026-09-24T23:55:00",
+      "Team1": 511199,
+      "Team2": 622074,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 10,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612846,
+      "Sport": 1,
+      "Region": 1610,
+      "Champ": 66423,
+      "StartTime": "2026-09-24T23:38:00",
+      "Team1": 657092,
+      "Team2": 651462,
+      "MatchStatusID": 3,
+      "MatchTime": "4",
+      "Score": "1:3",
+      "LiveBetStatus": true,
+      "mc": 11,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612849,
+      "Sport": 1,
+      "Region": 1610,
+      "Champ": 88848,
+      "StartTime": "2026-09-24T23:46:00",
+      "Team1": 677002,
+      "Team2": 649011,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 23,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612854,
+      "Sport": 1,
+      "Region": 1610,
+      "Champ": 105005,
+      "StartTime": "2026-09-24T23:50:00",
+      "Team1": 682231,
+      "Team2": 649126,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 23,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612857,
+      "Sport": 2,
+      "Region": 1712,
+      "Champ": 77129,
+      "StartTime": "2026-09-24T23:23:00",
+      "Team1": 511199,
+      "Team2": 662843,
+      "MatchStatusID": 17,
+      "MatchTime": "5",
+      "Score": "42:47",
+      "LiveBetStatus": true,
+      "mc": 4,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76612957,
+      "Sport": 1,
+      "Region": 1610,
+      "Champ": 66423,
+      "StartTime": "2026-09-24T23:53:00",
+      "Team1": 651046,
+      "Team2": 658537,
+      "MatchStatusID": 1,
+      "MatchTime": "0",
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 23,
+      "neut": true,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 0,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 26
+    },
+    {
+      "ID": 76613441,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 38408,
+      "StartTime": "2026-09-24T22:45:25",
+      "Team1": 235664,
+      "Team2": 235663,
+      "MatchStatusID": 9,
+      "MatchTime": null,
+      "Score": "1:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126556,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76613722,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 38408,
+      "StartTime": "2026-09-24T23:00:21",
+      "Team1": 235667,
+      "Team2": 235924,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 13,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126557,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76613743,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 94580,
+      "StartTime": "2026-09-24T23:01:51",
+      "Team1": 431390,
+      "Team2": 431411,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 13,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126558,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76614418,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 94577,
+      "StartTime": "2026-09-24T23:19:41",
+      "Team1": 431415,
+      "Team2": 431412,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126559,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76614429,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 38408,
+      "StartTime": "2026-09-24T23:19:58",
+      "Team1": 235929,
+      "Team2": 235665,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126560,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76614549,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 94578,
+      "StartTime": "2026-09-24T23:25:05",
+      "Team1": 431408,
+      "Team2": 431417,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126561,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76614809,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 38408,
+      "StartTime": "2026-09-24T23:38:19",
+      "Team1": 235917,
+      "Team2": 235660,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126562,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    },
+    {
+      "ID": 76614831,
+      "Sport": 103,
+      "Region": 1188,
+      "Champ": 94579,
+      "StartTime": "2026-09-24T23:39:38",
+      "Team1": 431389,
+      "Team2": 431413,
+      "MatchStatusID": 8,
+      "MatchTime": null,
+      "Score": "0:0",
+      "LiveBetStatus": true,
+      "mc": 5,
+      "neut": false,
+      "plng": null,
+      "ovlng": null,
+      "hst": false,
+      "bgid": 29126563,
+      "tdesc": false,
+      "hprs": null,
+      "ls": 20
+    }
+  ],
+  "Sports": [
+    {
+      "ID": 1,
+      "Name": "Soccer",
+      "kn": "Soccer",
+      "N": 2,
+      "SportType": 1
+    },
+    {
+      "ID": 2,
+      "Name": "Basketball",
+      "kn": "Basketball",
+      "N": 3,
+      "SportType": 1
+    },
+    {
+      "ID": 3,
+      "Name": "Baseball",
+      "kn": "Baseball",
+      "N": 6,
+      "SportType": 1
+    },
+    {
+      "ID": 4,
+      "Name": "Ice Hockey",
+      "kn": "Ice Hockey",
+      "N": 7,
+      "SportType": 1
+    },
+    {
+      "ID": 5,
+      "Name": "Tennis",
+      "kn": "Tennis",
+      "N": 5,
+      "SportType": 1
+    },
+    {
+      "ID": 6,
+      "Name": "Handball",
+      "kn": "Handball",
+      "N": 8,
+      "SportType": 1
+    },
+    {
+      "ID": 15,
+      "Name": "American Football",
+      "kn": "American Football",
+      "N": 14,
+      "SportType": 1
+    },
+    {
+      "ID": 19,
+      "Name": "Table Tennis",
+      "kn": "Table Tennis",
+      "N": 28,
+      "SportType": 1
+    },
+    {
+      "ID": 21,
+      "Name": "Darts",
+      "kn": "Darts",
+      "N": 56,
+      "SportType": 1
+    },
+    {
+      "ID": 22,
+      "Name": "Volleyball",
+      "kn": "Volleyball",
+      "N": 11,
+      "SportType": 1
+    },
+    {
+      "ID": 26,
+      "Name": "Futsal",
+      "kn": "Futsal",
+      "N": 12,
+      "SportType": 1
+    },
+    {
+      "ID": 63,
+      "Name": "Counter-Strike",
+      "kn": "Counter-Strike",
+      "N": 90,
+      "SportType": 3
+    },
+    {
+      "ID": 103,
+      "Name": "Sim-Play Tennis",
+      "kn": "Virtual Tennis",
+      "N": 167,
+      "SportType": 2
+    },
+    {
+      "ID": 109,
+      "Name": "Sim-Play Baseball",
+      "kn": "Virtual Baseball InPlay",
+      "N": 168,
+      "SportType": 2
+    },
+    {
+      "ID": 192,
+      "Name": "Sim-Play Cricket",
+      "kn": "Virtual Cricet InPlay",
+      "N": 169,
+      "SportType": 2
+    }
+  ],
+  "Regions": [
+    {
+      "ID": 12,
+      "kn": "Brazil",
+      "Name": "Brazil",
+      "N": 39,
+      "SportID": 1
+    },
+    {
+      "ID": 14,
+      "kn": "USA",
+      "Name": "USA",
+      "N": 2,
+      "SportID": 2
+    },
+    {
+      "ID": 15,
+      "kn": "USA",
+      "Name": "USA",
+      "N": 1,
+      "SportID": 3
+    },
+    {
+      "ID": 36,
+      "kn": "USA",
+      "Name": "USA",
+      "N": 3,
+      "SportID": 4
+    },
+    {
+      "ID": 42,
+      "kn": "USA",
+      "Name": "USA",
+      "N": 1,
+      "SportID": 15
+    },
+    {
+      "ID": 48,
+      "kn": "Chile",
+      "Name": "Chile",
+      "N": 57,
+      "SportID": 1
+    },
+    {
+      "ID": 70,
+      "kn": "International",
+      "Name": "International",
+      "N": 2,
+      "SportID": 6
+    },
+    {
+      "ID": 97,
+      "kn": "International",
+      "Name": "International",
+      "N": 1,
+      "SportID": 21
+    },
+    {
+      "ID": 127,
+      "kn": "International",
+      "Name": "International",
+      "N": 3,
+      "SportID": 22
+    },
+    {
+      "ID": 158,
+      "kn": "Canada",
+      "Name": "Canada",
+      "N": 5,
+      "SportID": 4
+    },
+    {
+      "ID": 178,
+      "kn": "Brazil",
+      "Name": "Brazil",
+      "N": 7,
+      "SportID": 26
+    },
+    {
+      "ID": 211,
+      "kn": "Brazil",
+      "Name": "Brazil",
+      "N": 24,
+      "SportID": 2
+    },
+    {
+      "ID": 268,
+      "kn": "Brazil",
+      "Name": "Brazil",
+      "N": 22,
+      "SportID": 22
+    },
+    {
+      "ID": 294,
+      "kn": "Honduras",
+      "Name": "Honduras",
+      "N": 122,
+      "SportID": 1
+    },
+    {
+      "ID": 331,
+      "kn": "Chile",
+      "Name": "Chile",
+      "N": 45,
+      "SportID": 2
+    },
+    {
+      "ID": 382,
+      "kn": "Uruguay",
+      "Name": "Uruguay",
+      "N": 47,
+      "SportID": 2
+    },
+    {
+      "ID": 484,
+      "kn": "Peru",
+      "Name": "Peru",
+      "N": 29,
+      "SportID": 26
+    },
+    {
+      "ID": 485,
+      "kn": "Argentina",
+      "Name": "Argentina",
+      "N": 30,
+      "SportID": 26
+    },
+    {
+      "ID": 507,
+      "kn": "USA",
+      "Name": "USA",
+      "N": 2,
+      "SportID": 22
+    },
+    {
+      "ID": 820,
+      "kn": "Tournaments",
+      "Name": "Tournaments",
+      "N": 1,
+      "SportID": 63
+    },
+    {
+      "ID": 946,
+      "kn": "Paraguay",
+      "Name": "Paraguay",
+      "N": 115,
+      "SportID": 2
+    },
+    {
+      "ID": 1002,
+      "kn": "Czech Republic",
+      "Name": "Czechia",
+      "N": 3,
+      "SportID": 19
+    },
+    {
+      "ID": 1014,
+      "kn": "Nicaragua",
+      "Name": "Nicaragua",
+      "N": 17,
+      "SportID": 3
+    },
+    {
+      "ID": 1082,
+      "kn": "Simulated Reality",
+      "Name": "Simulated Reality",
+      "N": 32,
+      "SportID": 5
+    },
+    {
+      "ID": 1188,
+      "kn": "Virtual Tennis In-Play",
+      "Name": "Sim-Play Tennis",
+      "N": 1,
+      "SportID": 103
+    },
+    {
+      "ID": 1191,
+      "kn": "Virtual Baseball",
+      "Name": "Sim-Play Baseball",
+      "N": 1,
+      "SportID": 109
+    },
+    {
+      "ID": 1205,
+      "kn": "Gt Sports League",
+      "Name": "Gt Sports League",
+      "N": 238,
+      "SportID": 1
+    },
+    {
+      "ID": 1544,
+      "kn": "Virtual Cricket",
+      "Name": "Sim-Play Cricket",
+      "N": 1,
+      "SportID": 192
+    },
+    {
+      "ID": 1610,
+      "kn": "UK Esport",
+      "Name": "UK Esport",
+      "N": 245,
+      "SportID": 1
+    },
+    {
+      "ID": 1623,
+      "kn": "UK Esport",
+      "Name": "UK Esport",
+      "N": 149,
+      "SportID": 2
+    },
+    {
+      "ID": 1626,
+      "kn": "eAdriatic League",
+      "Name": "EAdriatic League",
+      "N": 239,
+      "SportID": 1
+    },
+    {
+      "ID": 1662,
+      "kn": "eAdriatic League",
+      "Name": "eAdriatic League",
+      "N": 146,
+      "SportID": 2
+    },
+    {
+      "ID": 1712,
+      "kn": "US Esport",
+      "Name": "USA Esport",
+      "N": 148,
+      "SportID": 2
+    },
+    {
+      "ID": 1934,
+      "kn": "Sim-Play Cricket",
+      "Name": "Sim-Play Cricket",
+      "N": 2,
+      "SportID": 192
+    },
+    {
+      "ID": 1964,
+      "kn": "UTR Men",
+      "Name": "UTR Men",
+      "N": 24,
+      "SportID": 5
+    },
+    {
+      "ID": 1967,
+      "kn": "ITF Men.",
+      "Name": "ITF Men",
+      "N": 19,
+      "SportID": 5
+    },
+    {
+      "ID": 1968,
+      "kn": "ITF Women.",
+      "Name": "ITF Women",
+      "N": 20,
+      "SportID": 5
+    }
+  ],
+  "Championats": [
+    {
+      "ID": 657,
+      "Name": "WNBA",
+      "N": 11,
+      "RegionID": 14
+    },
+    {
+      "ID": 661,
+      "Name": "MLB",
+      "N": 1,
+      "RegionID": 15
+    },
+    {
+      "ID": 988,
+      "Name": "NHL, Preseason",
+      "N": 3,
+      "RegionID": 36
+    },
+    {
+      "ID": 1034,
+      "Name": "College",
+      "N": 8,
+      "RegionID": 42
+    },
+    {
+      "ID": 3198,
+      "Name": "OHL",
+      "N": 1,
+      "RegionID": 158
+    },
+    {
+      "ID": 10303,
+      "Name": "Primera Division",
+      "N": 1,
+      "RegionID": 484
+    },
+    {
+      "ID": 10434,
+      "Name": "Primera Division",
+      "N": 1,
+      "RegionID": 485
+    },
+    {
+      "ID": 11465,
+      "Name": "Campeonato Paulista",
+      "N": 5,
+      "RegionID": 268
+    },
+    {
+      "ID": 11920,
+      "Name": "Campeonato Paulista, Women",
+      "N": 6,
+      "RegionID": 268
+    },
+    {
+      "ID": 12275,
+      "Name": "NCAA, Women",
+      "N": 2,
+      "RegionID": 507
+    },
+    {
+      "ID": 13427,
+      "Name": "U19 Paulista",
+      "N": 20,
+      "RegionID": 268
+    },
+    {
+      "ID": 18134,
+      "Name": "South American Games",
+      "N": 274,
+      "RegionID": 70
+    },
+    {
+      "ID": 21764,
+      "Name": "U23 Pan American Cup",
+      "N": 376,
+      "RegionID": 127
+    },
+    {
+      "ID": 30451,
+      "Name": "El Metro, Playoffs",
+      "N": 5,
+      "RegionID": 382
+    },
+    {
+      "ID": 38392,
+      "Name": " Sim-Play Baseball",
+      "N": 1,
+      "RegionID": 1191
+    },
+    {
+      "ID": 38408,
+      "Name": "Sim-Play Tennis",
+      "N": 1,
+      "RegionID": 1188
+    },
+    {
+      "ID": 40252,
+      "Name": "Modus Super Series",
+      "N": 277,
+      "RegionID": 97
+    },
+    {
+      "ID": 46061,
+      "Name": "U20 Campeonato Paulista",
+      "N": 45,
+      "RegionID": 211
+    },
+    {
+      "ID": 46211,
+      "Name": "Paraibano, Serie B",
+      "N": 553,
+      "RegionID": 12
+    },
+    {
+      "ID": 50193,
+      "Name": "Czech Liga Pro",
+      "N": 2,
+      "RegionID": 1002
+    },
+    {
+      "ID": 57434,
+      "Name": "Sim-Play Cricket",
+      "N": 1,
+      "RegionID": 1544
+    },
+    {
+      "ID": 57634,
+      "Name": "Gt Champions League 3",
+      "N": 6,
+      "RegionID": 1205
+    },
+    {
+      "ID": 58945,
+      "Name": "Reserve League",
+      "N": 10,
+      "RegionID": 294
+    },
+    {
+      "ID": 59890,
+      "Name": "Gt Europa League 2",
+      "N": 12,
+      "RegionID": 1205
+    },
+    {
+      "ID": 62872,
+      "Name": "Tercera de Ascenso",
+      "N": 19,
+      "RegionID": 382
+    },
+    {
+      "ID": 66423,
+      "Name": "H2H GG League EA FC 24 (2X4 min.)",
+      "N": 1,
+      "RegionID": 1610
+    },
+    {
+      "ID": 68989,
+      "Name": "H2H GG League NBA (4X5 min.)",
+      "N": 1,
+      "RegionID": 1623
+    },
+    {
+      "ID": 69525,
+      "Name": "International",
+      "N": 1,
+      "RegionID": 1626
+    },
+    {
+      "ID": 75162,
+      "Name": "Campeonato GPO, Playoffs",
+      "N": 3,
+      "RegionID": 1014
+    },
+    {
+      "ID": 76859,
+      "Name": "H2H GG League NBA (4X5 min.)",
+      "N": 1,
+      "RegionID": 1712
+    },
+    {
+      "ID": 77129,
+      "Name": "H2H GG League NBA 2 (4X5 min.)",
+      "N": 2,
+      "RegionID": 1712
+    },
+    {
+      "ID": 79096,
+      "Name": "Copa do Sul",
+      "N": 40,
+      "RegionID": 178
+    },
+    {
+      "ID": 80601,
+      "Name": "ESL Challenger: SA",
+      "N": 113,
+      "RegionID": 820
+    },
+    {
+      "ID": 88848,
+      "Name": "H2H GG League 03 EA FC 24 (2X4 min.)",
+      "N": 3,
+      "RegionID": 1610
+    },
+    {
+      "ID": 94467,
+      "Name": "H2H GG League NBA 2 (4X5 min.)",
+      "N": 2,
+      "RegionID": 1623
+    },
+    {
+      "ID": 94577,
+      "Name": "Sim-Play ATP Legends 1990s",
+      "N": 2,
+      "RegionID": 1188
+    },
+    {
+      "ID": 94578,
+      "Name": "Sim-Play ATP Legends 2000s",
+      "N": 3,
+      "RegionID": 1188
+    },
+    {
+      "ID": 94579,
+      "Name": "Sim-Play ATP Legends 2020s",
+      "N": 4,
+      "RegionID": 1188
+    },
+    {
+      "ID": 94580,
+      "Name": "Sim-Play ATP Legends 2010s",
+      "N": 5,
+      "RegionID": 1188
+    },
+    {
+      "ID": 105005,
+      "Name": "H2H GG League 04 EA FC 24 (2X4 min.)",
+      "N": 4,
+      "RegionID": 1610
+    },
+    {
+      "ID": 106505,
+      "Name": "Copa Chile, Knockout stage",
+      "N": 42,
+      "RegionID": 48
+    },
+    {
+      "ID": 108287,
+      "Name": "eBasket NBA League",
+      "N": 5,
+      "RegionID": 1662
+    },
+    {
+      "ID": 110558,
+      "Name": "World T20",
+      "N": 1,
+      "RegionID": 1934
+    },
+    {
+      "ID": 112177,
+      "Name": "LNB, Clausura",
+      "N": 13,
+      "RegionID": 946
+    },
+    {
+      "ID": 131629,
+      "Name": "LNB, Championship Round",
+      "N": 26,
+      "RegionID": 331
+    },
+    {
+      "ID": 131630,
+      "Name": "LNB, Relegation round",
+      "N": 27,
+      "RegionID": 331
+    },
+    {
+      "ID": 131963,
+      "Name": "SRL Fall Invitational Tucson, AZ",
+      "N": 305,
+      "RegionID": 1082
+    },
+    {
+      "ID": 132105,
+      "Name": "UTR PTT Norfolk Men +H 01, Group D",
+      "N": 3589,
+      "RegionID": 1964
+    },
+    {
+      "ID": 132158,
+      "Name": "ITF M15 Columbia, SC",
+      "N": 1295,
+      "RegionID": 1967
+    },
+    {
+      "ID": 132179,
+      "Name": "ITF M15 Curitiba Doubles",
+      "N": 1300,
+      "RegionID": 1967
+    },
+    {
+      "ID": 132181,
+      "Name": "ITF W15 Belem Doubles",
+      "N": 1447,
+      "RegionID": 1968
+    },
+    {
+      "ID": 132182,
+      "Name": "ITF W50 Berkeley, CA Doubles",
+      "N": 1448,
+      "RegionID": 1968
+    }
+  ],
+  "Teams": [
+    {
+      "ID": 517,
+      "Name": "Atlanta Braves"
+    },
+    {
+      "ID": 519,
+      "Name": "Boston Red Sox"
+    },
+    {
+      "ID": 522,
+      "Name": "Cincinnati Reds"
+    },
+    {
+      "ID": 523,
+      "Name": "Cleveland Indians"
+    },
+    {
+      "ID": 531,
+      "Name": "Milwaukee Brewers"
+    },
+    {
+      "ID": 534,
+      "Name": "New York Yankees"
+    },
+    {
+      "ID": 536,
+      "Name": "Philadelphia Phillies"
+    },
+    {
+      "ID": 542,
+      "Name": "Tampa Bay Rays"
+    },
+    {
+      "ID": 811,
+      "Name": " ABA Ancud"
+    },
+    {
+      "ID": 812,
+      "Name": "CD Espanol de Talca"
+    },
+    {
+      "ID": 814,
+      "Name": "CD Las Animas"
+    },
+    {
+      "ID": 819,
+      "Name": "Club Deportes Castro"
+    },
+    {
+      "ID": 2691,
+      "Name": "Club Trouville"
+    },
+    {
+      "ID": 3868,
+      "Name": "Chicago Sky W."
+    },
+    {
+      "ID": 3869,
+      "Name": "Connecticut Sun W."
+    },
+    {
+      "ID": 3878,
+      "Name": "Washington Mystics W."
+    },
+    {
+      "ID": 5662,
+      "Name": "Coastal Carolina Chanticleers"
+    },
+    {
+      "ID": 5716,
+      "Name": "Liberty Flames"
+    },
+    {
+      "ID": 6981,
+      "Name": "Argentina"
+    },
+    {
+      "ID": 7627,
+      "Name": "Peterborough Petes"
+    },
+    {
+      "ID": 7629,
+      "Name": "Sarnia Sting"
+    },
+    {
+      "ID": 7858,
+      "Name": "Boston Bruins"
+    },
+    {
+      "ID": 7861,
+      "Name": "Buffalo Sabres"
+    },
+    {
+      "ID": 7866,
+      "Name": "Columbus Blue Jackets"
+    },
+    {
+      "ID": 8042,
+      "Name": "New York Rangers"
+    },
+    {
+      "ID": 8370,
+      "Name": "Detroit Red Wings"
+    },
+    {
+      "ID": 8372,
+      "Name": "Florida Panthers"
+    },
+    {
+      "ID": 8375,
+      "Name": "New Jersey Devils"
+    },
+    {
+      "ID": 8378,
+      "Name": "Philadelphia Flyers"
+    },
+    {
+      "ID": 8379,
+      "Name": "Pittsburgh Penguins"
+    },
+    {
+      "ID": 8381,
+      "Name": "Tampa Bay Lightning"
+    },
+    {
+      "ID": 10963,
+      "Name": "CD Everton Vina del Mar"
+    },
+    {
+      "ID": 10975,
+      "Name": "Universidad de Chile"
+    },
+    {
+      "ID": 23247,
+      "Name": "Sao Cristovao Saude/Sao Caetano W."
+    },
+    {
+      "ID": 23249,
+      "Name": "Osasco VC W."
+    },
+    {
+      "ID": 27848,
+      "Name": "West, Steve"
+    },
+    {
+      "ID": 62689,
+      "Name": "AFA Rimac"
+    },
+    {
+      "ID": 77459,
+      "Name": "Club Atletico Bohemios"
+    },
+    {
+      "ID": 81696,
+      "Name": "Maua Volley U19"
+    },
+    {
+      "ID": 104614,
+      "Name": "Peru"
+    },
+    {
+      "ID": 106103,
+      "Name": "Sao Bernardo U19"
+    },
+    {
+      "ID": 117345,
+      "Name": "UCF Knights W."
+    },
+    {
+      "ID": 117789,
+      "Name": "FerroCarril Oeste"
+    },
+    {
+      "ID": 123863,
+      "Name": "CS Deportivo Sayago"
+    },
+    {
+      "ID": 129286,
+      "Name": "BGSU Falcons W."
+    },
+    {
+      "ID": 131173,
+      "Name": "Kansas State Wildcats W."
+    },
+    {
+      "ID": 131892,
+      "Name": "Howard Bison W."
+    },
+    {
+      "ID": 131894,
+      "Name": "Samford Bulldogs W."
+    },
+    {
+      "ID": 131901,
+      "Name": "East Tennessee State Bucs"
+    },
+    {
+      "ID": 142757,
+      "Name": "Robinson, Reece"
+    },
+    {
+      "ID": 153776,
+      "Name": "Hallquist Lithen, John"
+    },
+    {
+      "ID": 170615,
+      "Name": "Incarnate Word Cardinals W."
+    },
+    {
+      "ID": 170739,
+      "Name": "Miami RedHawks W."
+    },
+    {
+      "ID": 172192,
+      "Name": "San Jose"
+    },
+    {
+      "ID": 197549,
+      "Name": "Esteli"
+    },
+    {
+      "ID": 197552,
+      "Name": "Matagalpa"
+    },
+    {
+      "ID": 203856,
+      "Name": "Auger Aliassime, Felix (SRL)"
+    },
+    {
+      "ID": 204813,
+      "Name": "RB Leipzig (THUNDER)"
+    },
+    {
+      "ID": 208821,
+      "Name": "Paul, Tommy (SRL)"
+    },
+    {
+      "ID": 235660,
+      "Name": "Zveriev"
+    },
+    {
+      "ID": 235663,
+      "Name": "Andorsen"
+    },
+    {
+      "ID": 235664,
+      "Name": "Raonnec"
+    },
+    {
+      "ID": 235665,
+      "Name": "Kyrgiso"
+    },
+    {
+      "ID": 235667,
+      "Name": "Queray"
+    },
+    {
+      "ID": 235917,
+      "Name": "Fedirer"
+    },
+    {
+      "ID": 235924,
+      "Name": "Tsogna"
+    },
+    {
+      "ID": 235929,
+      "Name": "Bertich"
+    },
+    {
+      "ID": 235965,
+      "Name": "Kansas City Royals"
+    },
+    {
+      "ID": 236015,
+      "Name": "Tampa Bay Rays"
+    },
+    {
+      "ID": 258192,
+      "Name": "Realizar W."
+    },
+    {
+      "ID": 261481,
+      "Name": "Suzano Esporte Clube"
+    },
+    {
+      "ID": 262164,
+      "Name": "Coppin State Eagles W."
+    },
+    {
+      "ID": 270107,
+      "Name": "Picuiense Pb"
+    },
+    {
+      "ID": 270224,
+      "Name": "Ad Guarabira Pb"
+    },
+    {
+      "ID": 273807,
+      "Name": "Mogi Basquete U20"
+    },
+    {
+      "ID": 283485,
+      "Name": "Ruzicka, Jiri"
+    },
+    {
+      "ID": 293564,
+      "Name": "Felix Perez Cardozo"
+    },
+    {
+      "ID": 300038,
+      "Name": "Barracas Central"
+    },
+    {
+      "ID": 304500,
+      "Name": "Yawara Esports"
+    },
+    {
+      "ID": 305851,
+      "Name": "Rajasthan"
+    },
+    {
+      "ID": 305953,
+      "Name": "Hyderabad"
+    },
+    {
+      "ID": 317447,
+      "Name": "Old Dominion Monarchs"
+    },
+    {
+      "ID": 341201,
+      "Name": "Colo Colo"
+    },
+    {
+      "ID": 349740,
+      "Name": "Jundiai U19"
+    },
+    {
+      "ID": 357733,
+      "Name": "England (Pascal)"
+    },
+    {
+      "ID": 362198,
+      "Name": "Urbaniec, Radim"
+    },
+    {
+      "ID": 378580,
+      "Name": "Germany (Iron)"
+    },
+    {
+      "ID": 378890,
+      "Name": "Bounty Hunters"
+    },
+    {
+      "ID": 379055,
+      "Name": "Renasce Voleibol Sorocaba"
+    },
+    {
+      "ID": 379582,
+      "Name": "Appalachian State Mountaineers"
+    },
+    {
+      "ID": 379926,
+      "Name": "Texas AM Commerce Lions"
+    },
+    {
+      "ID": 396809,
+      "Name": "Phoenix Suns (KOBRA)"
+    },
+    {
+      "ID": 399533,
+      "Name": "Besiktas Istanbul (David)"
+    },
+    {
+      "ID": 405602,
+      "Name": "Fundesport Araraquara U20"
+    },
+    {
+      "ID": 411172,
+      "Name": "Swaine, Charlie"
+    },
+    {
+      "ID": 431389,
+      "Name": "TSITSIPAS, STEFANOS (2017)"
+    },
+    {
+      "ID": 431390,
+      "Name": "TSONGA, JO-WILFRIED (08-16)"
+    },
+    {
+      "ID": 431408,
+      "Name": "FEDERER, ROGER (99-07)"
+    },
+    {
+      "ID": 431411,
+      "Name": "WAWRINKA, STAN (08-16)"
+    },
+    {
+      "ID": 431412,
+      "Name": "AGASSI, ANDRE (90-98)"
+    },
+    {
+      "ID": 431413,
+      "Name": "FEDERER, ROGER (2017)"
+    },
+    {
+      "ID": 431415,
+      "Name": "BECKER, BORIS (90-98)"
+    },
+    {
+      "ID": 431417,
+      "Name": "RODDICK, ANDY (99-07)"
+    },
+    {
+      "ID": 445613,
+      "Name": "Hedgecoe, Drew"
+    },
+    {
+      "ID": 446220,
+      "Name": "Morgan, Ryan"
+    },
+    {
+      "ID": 450301,
+      "Name": "Bynoe, E"
+    },
+    {
+      "ID": 491957,
+      "Name": "Chapecoense"
+    },
+    {
+      "ID": 495018,
+      "Name": "Deportivo Amambay"
+    },
+    {
+      "ID": 500403,
+      "Name": "Memphis Grizzlies (RAPTOR)"
+    },
+    {
+      "ID": 505823,
+      "Name": "Charlotte Hornets (LANES)"
+    },
+    {
+      "ID": 508729,
+      "Name": "Goode, Gavin"
+    },
+    {
+      "ID": 511199,
+      "Name": "Toronto Raptors (MYTH)"
+    },
+    {
+      "ID": 516825,
+      "Name": "Miami Heat (OREZ)"
+    },
+    {
+      "ID": 525239,
+      "Name": "Chicago Bulls (MALICE)"
+    },
+    {
+      "ID": 547852,
+      "Name": "Cacador Futsal"
+    },
+    {
+      "ID": 561332,
+      "Name": "Orlando Magic (MALICE)"
+    },
+    {
+      "ID": 562692,
+      "Name": "Charlotte Hornets (HORROR)"
+    },
+    {
+      "ID": 572703,
+      "Name": "Miguel, Luis Felipe"
+    },
+    {
+      "ID": 575899,
+      "Name": "Volei Mania Itaqua SP"
+    },
+    {
+      "ID": 576431,
+      "Name": "USA U23"
+    },
+    {
+      "ID": 581429,
+      "Name": "Papua New Guinea"
+    },
+    {
+      "ID": 582340,
+      "Name": "Canada"
+    },
+    {
+      "ID": 587747,
+      "Name": "Club Deportivo Platense  (Res)"
+    },
+    {
+      "ID": 601966,
+      "Name": "Reducto"
+    },
+    {
+      "ID": 610086,
+      "Name": "Orlando Magic (OCEAN)"
+    },
+    {
+      "ID": 617421,
+      "Name": "Portugal (Gael)"
+    },
+    {
+      "ID": 622074,
+      "Name": "Miami Heat (SILVER)"
+    },
+    {
+      "ID": 625642,
+      "Name": "Tosetto, Rafael/Zanellato, Nicolas"
+    },
+    {
+      "ID": 632176,
+      "Name": "Bernardes, Bianca/Dourado, Jennifer Rosa"
+    },
+    {
+      "ID": 648355,
+      "Name": "Osuigwe, Whitney/Urhobo, Akasha"
+    },
+    {
+      "ID": 649011,
+      "Name": "Barcelona (GHOST)"
+    },
+    {
+      "ID": 649126,
+      "Name": "Paris SG (ENT)"
+    },
+    {
+      "ID": 651046,
+      "Name": "Arsenal (CASTLE)"
+    },
+    {
+      "ID": 651462,
+      "Name": "England (EMPEROR)"
+    },
+    {
+      "ID": 653883,
+      "Name": "Milwaukee Bucks (Sydney)"
+    },
+    {
+      "ID": 653961,
+      "Name": "Manchester City (GRIMACE)"
+    },
+    {
+      "ID": 657092,
+      "Name": "Spain (ORACLE)"
+    },
+    {
+      "ID": 657175,
+      "Name": "Toronto Tempo"
+    },
+    {
+      "ID": 658537,
+      "Name": "Aston Villa (ORACLE)"
+    },
+    {
+      "ID": 661429,
+      "Name": "Volei Mania Praia U19"
+    },
+    {
+      "ID": 662843,
+      "Name": "Chicago Bulls (FURY)"
+    },
+    {
+      "ID": 666189,
+      "Name": "Spain (Kaizen)"
+    },
+    {
+      "ID": 671993,
+      "Name": "Los Angeles Lakers (Saopaulo)"
+    },
+    {
+      "ID": 675499,
+      "Name": "Puerto Montt Basquetbol"
+    },
+    {
+      "ID": 676527,
+      "Name": "AFC Bournemouth (Kratos)"
+    },
+    {
+      "ID": 677002,
+      "Name": "Atletico De Madrid (NAVY)"
+    },
+    {
+      "ID": 678722,
+      "Name": "Atletico Madrid (Lost)"
+    },
+    {
+      "ID": 679215,
+      "Name": "Capiata Bulls"
+    },
+    {
+      "ID": 679806,
+      "Name": "Real Madrid (TIGER)"
+    },
+    {
+      "ID": 680807,
+      "Name": "Estrella Roja (Res.)"
+    },
+    {
+      "ID": 682231,
+      "Name": "FC Bayern Munchen (UNLEASHED)"
+    },
+    {
+      "ID": 682449,
+      "Name": "Manchester United FC (Atlas)"
+    },
+    {
+      "ID": 683642,
+      "Name": "AC Milan (Eros)"
+    },
+    {
+      "ID": 683663,
+      "Name": "AS Roma (Tiago)"
+    },
+    {
+      "ID": 684680,
+      "Name": "Deportivo FC Peru"
+    },
+    {
+      "ID": 685661,
+      "Name": "Trinidad And Tobago U23"
+    },
+    {
+      "ID": 686266,
+      "Name": "Avram, G"
+    },
+    {
+      "ID": 686389,
+      "Name": "Augusto Dos Santos, Ryan/Meneguetti, Sidney Emanuel"
+    },
+    {
+      "ID": 686410,
+      "Name": "Branchetti, Giovanni/Mouilleron Salvo, Manuel"
+    },
+    {
+      "ID": 686418,
+      "Name": "Roberts, Justin/Roveri Sidney, Gabriel"
+    },
+    {
+      "ID": 686430,
+      "Name": "Popovic, Mia/Santos, Sophia"
+    },
+    {
+      "ID": 686432,
+      "Name": "Abbagnato, Anastasia/Sahdiieva, Anita"
+    },
+    {
+      "ID": 686433,
+      "Name": "Okalova, Martina/Strakhova, Valeriya"
+    },
+    {
+      "ID": 686439,
+      "Name": "Cabezas Dominguez, Sofia Elena/Hui, Katherine"
+    },
+    {
+      "ID": 686492,
+      "Name": "RC Celta de Vigo (Fox)"
+    },
+    {
+      "ID": 686618,
+      "Name": "Moron, Florencia Belen/Rico Sanchez, Maria Jose"
+    },
+    {
+      "ID": 686850,
+      "Name": "Konishi Camargo Silva, Julia/Sanchez, Ana Sofia"
+    }
+  ],
+  "mk": []
+}
