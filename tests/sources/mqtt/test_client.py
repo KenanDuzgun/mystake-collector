@@ -1,13 +1,40 @@
 import socket
 import time
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from websocket import ABNF
 
 from mystake.sources.mqtt.client import (
     ListenerShutdown,
     MystakeMqttClient,
 )
+
+
+def _binary_frame(data: bytes) -> tuple[int, SimpleNamespace]:
+    """
+    Build a `(opcode, frame)` pair matching what
+    `websocket.WebSocket.recv_data_frame(control_frame=True)` returns
+    for an MQTT binary payload, for use as a `Mock().recv_data_frame`
+    `side_effect` entry.
+    """
+    return ABNF.OPCODE_BINARY, SimpleNamespace(data=data)
+
+
+def _close_frame(code: int | None, reason: bytes = b"") -> tuple[int, SimpleNamespace]:
+    """
+    Build a `(opcode, frame)` pair matching what
+    `recv_data_frame(control_frame=True)` returns for an actual
+    WebSocket CLOSE control frame: `frame.data` is the raw close
+    payload (2-byte status code + optional reason bytes), or empty
+    when the server sent no status code at all.
+    """
+    import struct
+
+    data = struct.pack("!H", code) + reason if code is not None else b""
+
+    return ABNF.OPCODE_CLOSE, SimpleNamespace(data=data)
 
 
 def test_successful_subscribe_is_registered(
@@ -283,9 +310,9 @@ def test_subscribe_preserves_publish_before_suback(
 
     ws = Mock()
 
-    ws.recv.side_effect = [
-        publish_packet,
-        suback_packet,
+    ws.recv_data_frame.side_effect = [
+        _binary_frame(publish_packet),
+        _binary_frame(suback_packet),
     ]
 
     client.websocket = ws
@@ -317,9 +344,9 @@ def test_subscribe_ignores_pingresp_while_waiting_for_suback(
 
     ws = Mock()
 
-    ws.recv.side_effect = [
-        pingresp_packet,
-        suback_packet,
+    ws.recv_data_frame.side_effect = [
+        _binary_frame(pingresp_packet),
+        _binary_frame(suback_packet),
     ]
 
     client.websocket = ws
@@ -350,9 +377,9 @@ def test_unsubscribe_preserves_publish_before_unsuback(
 
     ws = Mock()
 
-    ws.recv.side_effect = [
-        publish_packet,
-        unsuback_packet,
+    ws.recv_data_frame.side_effect = [
+        _binary_frame(publish_packet),
+        _binary_frame(unsuback_packet),
     ]
 
     client.websocket = ws
@@ -635,6 +662,9 @@ def test_send_is_not_blocked_by_concurrent_blocking_recv() -> None:
             release_recv.wait(timeout=5)
             return b"\x00"
 
+        def recv_data_frame(self, control_frame=False):
+            return _binary_frame(self.recv())
+
         def send_binary(self, packet):
             send_completed.set()
 
@@ -665,6 +695,12 @@ class _QueueWebSocket:
     on an internal queue fed by the test (no arbitrary sleeps needed
     for synchronization) and records whether two `recv()` calls were
     ever active at the same instant.
+
+    `recv_data_frame()` (the production `_ws_recv_raw` entry point as
+    of Phase 6C) wraps `recv()` rather than duplicating its
+    synchronization/queue logic, so `feed()` and
+    `concurrent_recv_detected` keep working unchanged for every
+    existing caller of this fake.
     """
 
     def __init__(self) -> None:
@@ -691,6 +727,9 @@ class _QueueWebSocket:
         finally:
             with self._lock:
                 self._recv_active = False
+
+    def recv_data_frame(self, control_frame=False):
+        return _binary_frame(self.recv())
 
     def send_binary(self, packet) -> None:
         self.sent_packets.append(packet)
@@ -832,10 +871,10 @@ def test_multiple_sequential_subscriptions_increment_packet_id() -> None:
     client = MystakeMqttClient()
 
     ws = Mock()
-    ws.recv.side_effect = [
-        b"\x90\x03\x00\x01\x00",
-        b"\x90\x03\x00\x02\x00",
-        b"\x90\x03\x00\x03\x00",
+    ws.recv_data_frame.side_effect = [
+        _binary_frame(b"\x90\x03\x00\x01\x00"),
+        _binary_frame(b"\x90\x03\x00\x02\x00"),
+        _binary_frame(b"\x90\x03\x00\x03\x00"),
     ]
     client.websocket = ws
 
@@ -986,4 +1025,182 @@ def test_pending_packet_queue_is_bounded() -> None:
     assert (
         client._pending_packets[-1]
         == f"packet-{_MAX_PENDING_PACKETS + over_limit - 1}".encode()
+    )
+
+
+# --- Phase 6C: WebSocket close-frame diagnostics -------------------------
+
+
+def test_ws_recv_raw_returns_binary_mqtt_payload_unchanged() -> None:
+    """
+    Normal MQTT binary delivery through the new `recv_data_frame()`
+    based read path must be byte-for-byte identical to what the old
+    `recv()` based path returned.
+    """
+    client = MystakeMqttClient()
+
+    packet = b"\x30\x1a\x00\x0eprematch/gamescache:test"
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = [_binary_frame(packet)]
+
+    assert client._ws_recv_raw(ws) == packet
+
+
+def test_ws_recv_raw_captures_close_frame_code_and_reason() -> None:
+    """
+    An actual WebSocket CLOSE control frame carrying a status code and
+    reason must be decoded and recorded, and still surfaced to the
+    caller as `""` (the existing "closed" sentinel) so no caller
+    contract changes.
+    """
+    client = MystakeMqttClient()
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = [_close_frame(1001, b"going away")]
+
+    result = client._ws_recv_raw(ws)
+
+    assert result == ""
+    assert client._close_frame_observed is True
+    assert client._close_code == 1001
+    assert client._close_reason == "going away"
+
+
+def test_ws_recv_raw_records_close_frame_with_no_status_code() -> None:
+    """
+    RFC 6455 allows a CLOSE frame with an empty payload (no status
+    code at all) - this must be distinguished from "no CLOSE frame was
+    observed", not misreported as a code.
+    """
+    client = MystakeMqttClient()
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = [_close_frame(None)]
+
+    result = client._ws_recv_raw(ws)
+
+    assert result == ""
+    assert client._close_frame_observed is True
+    assert client._close_code is None
+    assert client._close_reason is None
+
+
+def test_ws_recv_raw_skips_control_frames_without_close(monkeypatch) -> None:
+    """
+    `recv_data_frame(control_frame=True)` also surfaces WebSocket-level
+    PING/PONG control frames, which carry no MQTT data. `_ws_recv_raw`
+    must silently keep reading past them rather than returning them to
+    the caller (the caller contract is unchanged: binary payload, text,
+    or the closed sentinel only).
+    """
+    client = MystakeMqttClient()
+
+    publish_packet = b"\x30\x1a\x00\x0eprematch/gamescache:test"
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = [
+        (ABNF.OPCODE_PONG, SimpleNamespace(data=b"")),
+        _binary_frame(publish_packet),
+    ]
+
+    assert client._ws_recv_raw(ws) == publish_packet
+    assert client._close_frame_observed is False
+
+
+def test_read_dispatch_loop_reports_transport_eof_without_close_frame() -> None:
+    """
+    An abrupt transport-level termination (TCP EOF with no WebSocket
+    CLOSE frame) surfaces as `WebSocketConnectionClosedException` from
+    the underlying library, exactly as it did with `recv()` - this must
+    still be distinguishable from an observed CLOSE frame via
+    `_close_frame_observed`/`_lifecycle_context()`.
+    """
+    import websocket as websocket_module
+
+    client = MystakeMqttClient()
+    client._connected_at = time.monotonic()
+    client._last_recv_at = client._connected_at
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = (
+        websocket_module.WebSocketConnectionClosedException(
+            "Connection to remote host was lost."
+        )
+    )
+    client.websocket = ws
+
+    with pytest.raises(ConnectionError, match="close_frame=not_observed"):
+        client.receive_raw()
+
+    assert client._close_frame_observed is False
+    assert client._close_code is None
+
+
+def test_read_dispatch_loop_reports_close_frame_in_error_context() -> None:
+    """
+    When the peer does send an actual CLOSE frame (rather than an
+    abrupt EOF), the following `""`-triggered ConnectionError must
+    report the decoded code/reason via `_lifecycle_context()`.
+    """
+    client = MystakeMqttClient()
+    client._connected_at = time.monotonic()
+    client._last_recv_at = client._connected_at
+
+    ws = Mock()
+    ws.recv_data_frame.side_effect = [_close_frame(1000, b"normal")]
+    client.websocket = ws
+
+    with pytest.raises(
+        ConnectionError,
+        match=r"close_frame=code=1000 reason='normal'",
+    ):
+        client.receive_raw()
+
+    assert client._close_frame_observed is True
+    assert client._close_code == 1000
+    assert client._close_reason == "normal"
+
+
+def test_lifecycle_context_reports_publish_freshness_separately_from_recv() -> None:
+    """
+    `since_last_publish` must be driven by the last actual MQTT PUBLISH
+    (`_last_publish_at`), not by `_last_recv_at`, which also advances on
+    non-application frames (PINGRESP, the CLOSE frame itself) - a stale
+    PUBLISH must not be reported as fresh just because a CLOSE frame
+    was recently read.
+    """
+    client = MystakeMqttClient()
+    client._connected_at = time.monotonic() - 10
+    client._last_publish_at = time.monotonic() - 5
+    client._last_recv_at = time.monotonic()
+
+    context = client._lifecycle_context()
+
+    assert "since_last_publish=5." in context
+    assert "since_last_recv=0." in context
+
+
+def test_close_logs_and_resets_close_frame_state(caplog) -> None:
+    """
+    `close()` must report the close-frame evidence gathered during this
+    connection's lifetime, then reset it in `connect()` for the next
+    connection so stale evidence from a previous connection never leaks
+    into the next one's diagnostics.
+    """
+    client = MystakeMqttClient()
+
+    client.websocket = Mock()
+    client._connected_at = time.monotonic()
+    client._close_frame_observed = True
+    client._close_code = 1001
+    client._close_reason = "going away"
+
+    with caplog.at_level("INFO"):
+        client.close()
+
+    assert any(
+        "close_frame_observed=True" in record.message
+        and "close_code=1001" in record.message
+        for record in caplog.records
     )

@@ -2,6 +2,7 @@ import logging
 import random
 import socket
 import ssl
+import struct
 import threading
 import time
 from collections import deque
@@ -87,6 +88,28 @@ class MystakeMqttClient:
 
         self._awaiting_pingresp = False
         self._last_pingreq_at: float | None = None
+
+        # Phase 6B diagnostics: connection-lifecycle timing, populated
+        # in `connect()`/`_ws_recv_raw()`/`_send_packet()`, used only to
+        # log lifetime/gap measurements - never read for control flow.
+        self._connected_at: float | None = None
+        self._last_recv_at: float | None = None
+        self._last_send_at: float | None = None
+
+        # Phase 6C diagnostics: `_last_publish_at` is updated only from
+        # `_handle_frame()` when an MQTT PUBLISH is actually dispatched,
+        # so "time since last application data" cannot be confused with
+        # "time since last physical frame" (`_last_recv_at`, which also
+        # advances on PINGRESP and the WebSocket CLOSE frame itself).
+        # `_close_frame_observed`/`_close_code`/`_close_reason` record
+        # what `_ws_recv_raw()` decoded from an actual WebSocket CLOSE
+        # control frame, if one was observed, for the current
+        # connection - reset on each `connect()`. All of these are
+        # diagnostic only, never read for control flow.
+        self._last_publish_at: float | None = None
+        self._close_frame_observed = False
+        self._close_code: int | None = None
+        self._close_reason: str | None = None
 
         self._subscriptions: dict[str, int] = {}
 
@@ -180,15 +203,74 @@ class MystakeMqttClient:
     def _send_packet(self, ws: websocket.WebSocket, packet: bytes) -> None:
         with self._send_lock:
             ws.send_binary(packet)
+            self._last_send_at = time.monotonic()
 
     def _ws_recv_raw(self, ws: websocket.WebSocket):
         """
-        The only place that ever calls `ws.recv()`. Callers must hold
-        `_reader_lock` (or otherwise know they are the sole reader,
-        e.g. during the CONNACK handshake in `connect()` before any
-        other thread can reference the new socket).
+        The only place that ever calls into the WebSocket read path.
+        Callers must hold `_reader_lock` (or otherwise know they are
+        the sole reader, e.g. during the CONNACK handshake in
+        `connect()` before any other thread can reference the new
+        socket).
+
+        Phase 6C: uses `recv_data_frame(control_frame=True)` instead of
+        `recv()` so an actual WebSocket CLOSE control frame's code/
+        reason can be captured (see `_record_close_frame`) - `recv()`
+        (installed `websocket-client` 1.9.2) already unconditionally
+        consumed the CLOSE frame internally and collapsed it to `""`
+        before returning, discarding the code/reason it carried.
+        `control_frame=True` also surfaces PING/PONG control frames,
+        which are not MQTT data and are just skipped here (the library
+        has already auto-ponged a PING by the time it returns one) -
+        this loop, not the caller, absorbs them, so every caller sees
+        exactly the same contract as before: MQTT binary payload bytes,
+        text (raising below, as before), or `""` for a closed
+        connection.
         """
-        return ws.recv()
+        while True:
+            opcode, frame = ws.recv_data_frame(control_frame=True)
+
+            self._last_recv_at = time.monotonic()
+
+            if opcode == websocket.ABNF.OPCODE_CLOSE:
+                self._record_close_frame(frame.data)
+                return ""
+
+            if opcode == websocket.ABNF.OPCODE_TEXT:
+                data = frame.data
+                return data.decode("utf-8") if isinstance(data, bytes) else data
+
+            if opcode == websocket.ABNF.OPCODE_BINARY:
+                return frame.data
+
+            logger.debug(
+                "Ignoring WebSocket control frame opcode=%s",
+                opcode,
+            )
+
+    def _record_close_frame(self, data: bytes) -> None:
+        """
+        Decode an actual WebSocket CLOSE control frame's payload (2-byte
+        big-endian status code + optional UTF-8 reason, per RFC 6455
+        §5.5.1) - called only when `_ws_recv_raw` observed
+        `ABNF.OPCODE_CLOSE` on the wire, never inferred from a plain
+        transport EOF (see `WebSocketConnectionClosedException`
+        handling in `_read_dispatch_loop`, which never calls this).
+        """
+        self._close_frame_observed = True
+
+        if data and len(data) >= 2:
+            (self._close_code,) = struct.unpack("!H", data[:2])
+            self._close_reason = data[2:].decode("utf-8", errors="replace") or None
+        else:
+            self._close_code = None
+            self._close_reason = None
+
+        logger.info(
+            "MQTT_WEBSOCKET_CLOSE_FRAME_OBSERVED code=%s reason=%r",
+            self._close_code if self._close_code is not None else "unknown",
+            self._close_reason,
+        )
 
     def _raise_if_shutdown_requested(self) -> None:
         if self._shutdown_event.is_set():
@@ -292,6 +374,13 @@ class MystakeMqttClient:
 
         self._awaiting_pingresp = False
         self._last_pingreq_at = None
+        self._connected_at = time.monotonic()
+        self._last_recv_at = self._connected_at
+        self._last_send_at = self._connected_at
+        self._last_publish_at = None
+        self._close_frame_observed = False
+        self._close_code = None
+        self._close_reason = None
 
         logger.info(
             "MQTT keepalive enabled keep_alive=%ss read_timeout=%.1fs",
@@ -395,6 +484,15 @@ class MystakeMqttClient:
             self._pending_packets.clear()
             return
 
+        lifetime = (
+            time.monotonic() - self._connected_at
+            if self._connected_at is not None
+            else None
+        )
+        close_frame_observed = self._close_frame_observed
+        close_code = self._close_code
+        close_reason = self._close_reason
+
         try:
             self.websocket.close()
 
@@ -402,9 +500,17 @@ class MystakeMqttClient:
             self.websocket = None
             self._awaiting_pingresp = False
             self._last_pingreq_at = None
+            self._connected_at = None
             self._pending_packets.clear()
 
-        logger.info("WebSocket closed")
+        logger.info(
+            "WebSocket closed connection_lifetime=%s close_frame_observed=%s "
+            "close_code=%s close_reason=%r",
+            f"{lifetime:.1f}s" if lifetime is not None else "unknown",
+            close_frame_observed,
+            close_code if close_code is not None else "unknown",
+            close_reason,
+        )
 
     def _subscribe_once(
         self,
@@ -687,13 +793,20 @@ class MystakeMqttClient:
                 continue
 
             except websocket.WebSocketConnectionClosedException as exc:
-                raise ConnectionError("MQTT WebSocket connection closed") from exc
+                raise ConnectionError(
+                    f"MQTT WebSocket connection closed {self._lifecycle_context()}"
+                ) from exc
 
             except OSError as exc:
-                raise ConnectionError("MQTT WebSocket network error") from exc
+                raise ConnectionError(
+                    f"MQTT WebSocket network error {self._lifecycle_context()}"
+                ) from exc
 
             if message == "":
-                raise ConnectionError("MQTT WebSocket connection closed by remote peer")
+                raise ConnectionError(
+                    "MQTT WebSocket connection closed by remote peer "
+                    f"{self._lifecycle_context()}"
+                )
 
             if isinstance(message, str):
                 raise RuntimeError(
@@ -733,6 +846,7 @@ class MystakeMqttClient:
             return None
 
         if packet_type == _PACKET_TYPE_PUBLISH:
+            self._last_publish_at = time.monotonic()
             return message
 
         logger.debug(
@@ -796,14 +910,19 @@ class MystakeMqttClient:
 
             self.close()
 
+            reconnect_started_at = time.monotonic()
+
             try:
-                logger.info("Attempting MQTT reconnect")
+                logger.info("MQTT_RECONNECT_INITIATED")
 
                 self.connect()
 
                 self._resubscribe_active_topics()
 
-                logger.info("MQTT reconnect and resubscribe completed")
+                logger.info(
+                    "MQTT_RECONNECT_COMPLETED duration=%.3fs",
+                    time.monotonic() - reconnect_started_at,
+                )
 
                 return
 
@@ -900,6 +1019,52 @@ class MystakeMqttClient:
         return min(
             delay + jitter,
             self.reconnect_max_delay,
+        )
+
+    def _lifecycle_context(self) -> str:
+        """
+        Phase 6B/6C diagnostics: a short `key=value` fragment appended
+        to connection-loss error messages so log lines self-report the
+        connection's age, PINGREQ/PINGRESP state, and WebSocket CLOSE
+        frame evidence (if any) without needing to cross-reference
+        other log lines.
+
+        `since_last_publish` is deliberately derived from
+        `_last_publish_at` (set only in `_handle_frame` on an actual
+        MQTT PUBLISH), not from `_last_recv_at` (advanced on every
+        physical frame, including the CLOSE frame that would otherwise
+        make application-data freshness look artificially current at
+        the exact moment the connection dies).
+        """
+        now = time.monotonic()
+
+        connection_lifetime = (
+            f"{now - self._connected_at:.1f}s"
+            if self._connected_at is not None
+            else "unknown"
+        )
+        since_last_recv = (
+            f"{now - self._last_recv_at:.1f}s"
+            if self._last_recv_at is not None
+            else "unknown"
+        )
+        since_last_publish = (
+            f"{now - self._last_publish_at:.1f}s"
+            if self._last_publish_at is not None
+            else "none_yet"
+        )
+        close_frame = (
+            f"code={self._close_code} reason={self._close_reason!r}"
+            if self._close_frame_observed
+            else "not_observed"
+        )
+
+        return (
+            f"(connection_lifetime={connection_lifetime} "
+            f"since_last_recv={since_last_recv} "
+            f"since_last_publish={since_last_publish} "
+            f"awaiting_pingresp={self._awaiting_pingresp} "
+            f"close_frame={close_frame})"
         )
 
     def _require_connection(
